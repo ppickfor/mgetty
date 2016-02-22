@@ -33,6 +33,7 @@ extern struct conf_data_mgetty {
 	rings_wanted,				/* number of RINGs */
 	msn_list,				/* ISDN MSNs (dist.ring) */
 	getcnd_chat,				/* get caller ID (for ELINK)*/
+	cid_program,				/* notify about caller ID */
 	cnd_program,				/* accept caller? */
 	answer_chat,				/* ATA...CONNECT...""...\n */
 	answer_chat_timeout,			/* longer as S7! */

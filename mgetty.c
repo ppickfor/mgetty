@@ -279,6 +279,7 @@ int main _P2((argc, argv), int argc, char ** argv)
     int		rings_wanted;
     int		rings = 0;
     int		dist_ring = 0;		/* type of RING detected */
+    boolean	cid_program_ran = FALSE;/* Only run cid_program once per call */
 
 #if defined(_3B1_) || defined(MEIBE) || defined(sysV68)
     extern struct passwd *getpwuid(), *getpwnam();
@@ -548,6 +549,7 @@ int main _P2((argc, argv), int argc, char ** argv)
 	     */
 	    CallTime = CallName = CalledNr = "";	/* dirty */
 	    CallerId = "none";
+	    cid_program_ran = FALSE;
 	    clean_line( STDIN, 3);			/* let line settle */
 	    rmlocks();
 	    mgetty_state = St_waiting;
@@ -738,14 +740,26 @@ int main _P2((argc, argv), int argc, char ** argv)
 
 	    while ( rings < rings_wanted )
 	    {
-		if ( wait_for_ring( STDIN, c_chat(msn_list), 
-			  ( c_bool(ringback) && rings == 0 )
-				? c_int(ringback_time) : ring_chat_timeout,
-			  ring_chat_actions, &what_action, 
-			  &dist_ring ) == FAIL)
+		int w;
+
+		w = wait_for_ring( STDIN, c_chat(msn_list), 
+				   ( c_bool(ringback) && rings == 0 )
+				   ? c_int(ringback_time) : ring_chat_timeout,
+				   ring_chat_actions, &what_action, 
+				   &dist_ring );
+
+		/* Inform about Caller ID. If we haven't gotten the info by 3rd
+		 * ring, it's hopeless; just report that the phone rang. */
+		if ( c_isset(cid_program) && !cid_program_ran
+		     && (rings >= 2 || *CallName || strcmp(CallerId, "none")) )
 		{
-		    break;		/* ringing stopped, or "action" */
+		    cnd_call( c_string(cid_program), Device, dist_ring );
+		    cid_program_ran = TRUE;
 		}
+
+		if ( w == FAIL )
+		    break;		/* ringing stopped, or "action" */
+
 		rings++;
 	    }
 

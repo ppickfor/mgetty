@@ -296,6 +296,7 @@ void setup_environment _PROTO(( void ));
 
 extern char *Connect;
 extern char *CallerId;
+extern char *CallDate;
 extern char *CallTime;
 extern char *CallName;
 extern char *CalledNr;

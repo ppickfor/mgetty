@@ -170,7 +170,7 @@ cndfind _P1((str), char *str)
 		    p++;
 		}
 	    }
-	    lprintf(L_JUNK, "CND: found: %s", *(cp->variable));
+	    lprintf(L_NOISE, "CND: found: %s", *(cp->variable));
 	    return;
 	}
     }
@@ -221,7 +221,7 @@ void process_rockwell_mesg _P0 (void)
     }  
     *p = 0;
       
-    lprintf(L_JUNK, "CND: caller ID: %s", CallerId);
+    lprintf(L_NOISE, "CND: caller ID: %s", CallerId);
 }
 
 /* lookup Caller ID in CNDFILE, decide upon answering or not */
@@ -287,6 +287,7 @@ int cnd_call _P3((name, tty, dist_ring),
 		      tty, CallerId, CallName, dist_ring, CalledNr, CONSOLE );
     lprintf( L_NOISE, "CND: program \"%s\"", program );
 
+    setup_environment();
     rc = system(program);
 
     if ( rc < 0 )

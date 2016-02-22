@@ -85,6 +85,7 @@ struct conf_data_mgetty c = {
 	{ "rings", {1}, CT_INT, C_PRESET },
 	{ "msn-list", {(p_int) NULL}, CT_CHAT, C_EMPTY },
 	{ "get-cnd-chat", {0}, CT_CHAT, C_EMPTY },
+	{ "cid-program", {(p_int) NULL}, CT_STRING, C_EMPTY },
 	{ "cnd-program", {(p_int) NULL}, CT_STRING, C_EMPTY },
 	{ "answer-chat", {0}, CT_CHAT, C_EMPTY },
 	{ "answer-chat-timeout", {80}, CT_INT, C_PRESET },

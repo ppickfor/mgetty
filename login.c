@@ -373,6 +373,10 @@ void setup_environment _P0(void)
 {
     if ( *CallerId )
 	set_env_var( "CALLER_ID", CallerId );
+    if ( *CallDate )
+	set_env_var( "CALL_DATE", CallDate );
+    if ( *CallTime )
+	set_env_var( "CALL_TIME", CallTime );
     if ( *CallName )
 	set_env_var( "CALLER_NAME", CallName );
     if ( *CalledNr )

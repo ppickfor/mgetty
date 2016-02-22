@@ -329,8 +329,8 @@ boolean	got_dle;		/* for <DLE><char> events (voice mode) */
 	 * we count it as "RING" to be able to pick up immediately 
 	 * instead of waiting for the next "real" RING
 	 * (but don't do this for V253 DRON/DROF modems!)
-	 */
 	if ( strncmp( buf, "NMBR", 4 ) == 0 && drox_count == 0 ) { break; }
+	 */
 
 	/* V.253 ring cadences */
 	if ( strncmp( buf, "DRON", 4 ) == 0 ||

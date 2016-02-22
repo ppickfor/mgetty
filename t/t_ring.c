@@ -40,7 +40,7 @@ struct t_ring_tests { char * input;
  {"RING 2\n", 1, 2, "" },
  {"RING A\nRING B\nRING C\nRING\n", 4, 3, "" },
  {"RING\n    FM:040404\n", 2, 0, "040404" },	/* ZyXEL + whitespc */
- {"RING\nNMBR = 0555\nRING\n", 3, -1, "0555" },	/* Rockwell */
+ {"RING\nNMBR = 0555\nRING\n", 2, -1, "0555" },	/* Rockwell */
  {"RING/0666\n", 1, 0, "" },			/* i4l - RING/to */
  {"RING;707070\n",      1, 0, "707070" },	/* ELSA - RING;from */
  {"RING;717171;999999\n", 1, 1, "717171" },	/* ELSA - RING;from;to */
@@ -91,6 +91,11 @@ int mdm_read_byte( int fd, char * c )
     raise(SIGALRM);
     errno = EINTR;
     return -1;
+}
+
+/* fake setup_environment function */
+void setup_environment(void)
+{
 }
 
 boolean virtual_ring = FALSE;

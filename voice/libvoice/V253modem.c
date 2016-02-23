@@ -1,4 +1,4 @@
-
+/*
  * V253modem.c
  *
  * This file contains the commands for V253 complaient modems

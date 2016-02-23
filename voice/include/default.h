@@ -266,6 +266,7 @@ CONF(enable_compression_mapping_querry, TRUE, CT_BOOL)
  */
 CONF(compression_8bit_linear_signed, 0, CT_INT) // compression 9 for rmd/pvf tools
 CONF(compression_16bit_linear_signed, 0, CT_INT) // compression 12 for rmd/pvf tools
+CONF(compression_16bit_linear_unsigned, 133, CT_INT) // compression 13 for rmd/pvf tools
 CONF(compression_8bit_linear_unsigned, 1 ,CT_INT) // compression 1 for rmd/pvf tools
 CONF(compression_8bit_ulaw,    4, CT_INT) // compression 10 for rmd/pvf tools
 CONF(compression_8bit_alaw,    5, CT_INT) // compression 11 for rmd/pvf tools

@@ -178,6 +178,7 @@ void V253_init_compression_table() {
   Kompressiontable[10]=cvd.compression_8bit_ulaw.d.i; /* ITU defined uLaw */
   Kompressiontable[11]=cvd.compression_8bit_alaw.d.i; /* ITU defined aLaw */
   Kompressiontable[12]=cvd.compression_16bit_linear_signed.d.i; /* ITU defined signed PCM 16-bit Intel Order */
+  Kompressiontable[13]=cvd.compression_16bit_linear_unsigned.d.i; /* ITU defined unsigned PCM 16-bit Intel Order */
 };
 
 #ifdef __USE_GNU

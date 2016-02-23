@@ -350,6 +350,11 @@ int V253modem_set_compression (p_int *compression, p_int *speed, int *bits)
 	 *bits=16;		/* 16 bit			   	    */
 	 break;
        }
+       case 13:        /* ITU defined unsigned PCM 16-bit Intel Order */
+       {
+	 *bits=16;		/* 16 bit			   	    */
+	 break;
+       }
 
 
        default:

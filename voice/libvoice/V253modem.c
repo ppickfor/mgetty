@@ -243,20 +243,24 @@ void V253_querry_compressions() {
 	 lprintf(L_NOISE, "Mapped 4 bit IMA ADPCM, 5 -> %d",Kompressiontable[5]);
        } else if(mSTRSTR(buffer,"ULAW")) {
 	 // The leading number in buffer contains the modem compression id
-	 Kompressiontable[10]= strtol(buffer, NULL, 10);
-	 lprintf(L_NOISE, "Mapped ulaw, 10 -> %d",Kompressiontable[10]);
+	 Kompressiontable[6]=
+           Kompressiontable[10]= strtol(buffer, NULL, 10);
+	 lprintf(L_NOISE, "Mapped ulaw, 6, 10 -> %d",Kompressiontable[10]);
        } else if(mSTRSTR(buffer,"Mu-Law")) {
 	 // The leading number in buffer contains the modem compression id
-	 Kompressiontable[10]= strtol(buffer, NULL, 10);
-	 lprintf(L_NOISE, "Mapped ulaw, 10 -> %d",Kompressiontable[10]);
+	 Kompressiontable[6]=
+           Kompressiontable[10]= strtol(buffer, NULL, 10);
+	 lprintf(L_NOISE, "Mapped ulaw, 6, 10 -> %d",Kompressiontable[10]);
        } else if(mSTRSTR(buffer,"ALAW")) {
 	 // The leading number in buffer contains the modem compression id
-	 Kompressiontable[11]= strtol(buffer, NULL, 10);
-	 lprintf(L_NOISE, "Mapped alaw, 11 -> %d",Kompressiontable[11]);
+	 Kompressiontable[7]=
+           Kompressiontable[11]= strtol(buffer, NULL, 10);
+	 lprintf(L_NOISE, "Mapped alaw, 7, 11 -> %d",Kompressiontable[11]);
        } else if(mSTRSTR(buffer,"A-Law")) {
 	 // The leading number in buffer contains the modem compression id
-	 Kompressiontable[11]= strtol(buffer, NULL, 10);
-	 lprintf(L_NOISE, "Mapped alaw, 11 -> %d",Kompressiontable[11]);
+	 Kompressiontable[7]=
+           Kompressiontable[11]= strtol(buffer, NULL, 10);
+	 lprintf(L_NOISE, "Mapped alaw, 7, 11 -> %d",Kompressiontable[11]);
        } else if(mSTRSTR(buffer,"16-BIT LINEAR")) {
 	 // The leading number in buffer contains the modem compression id
 	 Kompressiontable[13]= strtol(buffer, NULL, 10);

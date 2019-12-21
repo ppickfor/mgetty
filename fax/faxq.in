@@ -4,7 +4,16 @@
 #
 # like "lpq" or "mailq", show jobs waiting in the output queue
 #
-# SCCS: $Id: faxq.in,v 4.12 2010/06/04 12:42:54 gert Exp $ Copyright (C) 1994 Gert Doering
+# SCCS: $Id: faxq.in,v 4.13 2010/06/28 11:12:40 gert Exp $ Copyright (C) 1994 Gert Doering
+#
+# $Log: faxq.in,v $
+# Revision 4.13  2010/06/28 11:12:40  gert
+# change semantics of "faxq -r" (INCOMPATIBLE USER INTERFACE CHANGE)
+#    faxq -r     (old syntax) -> syntax error
+#    faxq -r all              -> re-queue all failed jobs ("old default")
+#    faxq -r F01234           -> re-queue job ID F01234
+#    faxq -r F012*            -> re-queue all jobs with IDs starting with F012
+#
 #
 FAX_SPOOL=@FAX_SPOOL@
 FAX_SPOOL_OUT=@FAX_SPOOL_OUT@
@@ -80,7 +89,21 @@ do
 	-o) jobs="*/JOB.done" ;;
 	-s) jobs="*/JOB.s*" ;;
 	-a) jobs="*/JOB*" ;;
-	-r) jobs="*/JOB.s*"; requeue="true" ;;
+	-r) if [ -z "$2" ] ; then
+		echo "$0: -r needs arguments (Fxxxx/all)!" >&2 ; exit 1
+	    fi
+	    if [ "$2" = "all" ] ; then
+                jobs="*/JOB.s*"; requeue="true"
+	    elif expr "$2" : "F[0-9*]*$" >/dev/null ; then
+		jobs="$2/JOB.s*"; requeue="true"
+	    elif expr "$2" : "F[0-9*]*/JOB.suspended$" >/dev/null ; then
+		jobs="$2"; requeue="true"
+	    else
+		echo "$0: '$2' is invalid job specification for '-r ...'" >&2
+		exit 1
+	    fi
+	    shift
+	    ;;
 	-P) if [ -z "$2" -o -z "$3" ] ; then
 		echo "$0: -P needs arguments!" >&2 ; exit 1 ;
 	    fi
@@ -93,7 +116,8 @@ valid options:
   -s: show suspended jobs
   -a: show all jobs
   -v: verbose output
-  -r: restart suspended jobs
+  -r <job>: restart suspended job
+  -r all  : restart ALL suspended jobs (careful!)
   -P <job> <pri>: change priority of job <job> to <pri>
 EOF_MSG
 	   exit 1 ;;
@@ -112,16 +136,16 @@ do
     if [ -z "$verbose" ]
     then
 	eval `tr -d '\042\047\140\134\044\073' <$i | \
-	     $AWK '$1=="user" { printf "USER=%s;", $2 }
-		   $1=="phone" { printf "PHONE=%s;", $2 }
+	     $AWK '$1=="user" { printf "USER=\"%s\";", $2 }
+		   $1=="phone" { printf "PHONE=\"%s\";", $2 }
 		   $1=="pages" { printf "PAGES=%d;", NF-1 }
 		   $1=="priority" { printf "PRI=\" pri=%s.\";", $2}' -`
 	$echo "$i: queued by $USER. $PAGES page(s) to $PHONE.$PRI"
     else
 	eval `tr -d '\042\047\140\134\044\073' <$i | \
-	     $AWK '$1=="user" { printf "USER=%s;", $2 }
+	     $AWK '$1=="user" { printf "USER=\"%s\";", $2 }
 		   $1=="mail"  { printf "MAILTO=\"%s\";", substr( $0, 6 ) }
-		   $1=="phone" { printf "PHONE=%s;", $2 }
+		   $1=="phone" { printf "PHONE=\"%s\";", $2 }
 		   $1=="verbose_to" \
 			       { printf "VERBTO=\"%s\";", substr( $0, 12 ) }
 		   $1=="acct_handle" \

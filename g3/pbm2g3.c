@@ -1,4 +1,4 @@
-#ident "$Id: pbm2g3.c,v 4.2 1998/05/07 10:37:38 gert Exp $ Copyright (C) 1994 Gert Doering"
+#ident "$Id: pbm2g3.c,v 4.5 2016/02/09 15:13:31 gert Exp $ Copyright (C) 1994 Gert Doering"
 
 /* pbm2g3
  *
@@ -40,7 +40,7 @@ static unsigned int out_hibit = 0;
 static int out_byte_tab[ 256 ];			/* for g3 byte reversal */
 
 #ifdef __GNUC__
-inline
+static inline
 #endif
 void putcode _P2( (code, len), int code, int len )
 {
@@ -60,7 +60,7 @@ void putcode _P2( (code, len), int code, int len )
 }
 
 #ifdef __GNUC__
-inline
+static inline
 #endif
 void puteol _P0( void )			/* write byte-aligned EOL */
 {
@@ -69,7 +69,7 @@ void puteol _P0( void )			/* write byte-aligned EOL */
 }
 
 #ifdef __GNUC__
-inline
+static inline
 #endif
 void putwhitespan _P1( (l), int l )
 {
@@ -100,7 +100,7 @@ void putwhitespan _P1( (l), int l )
 }
 
 #ifdef __GNUC__
-inline
+static inline
 #endif
 void putblackspan _P1( (l), int l )
 {
@@ -156,17 +156,17 @@ int pbm_getint _P1( (fd), int fd )
 	    while( buf[0] != '\n' && read( fd, buf, 1 ) == 1 ) {}
 	}
     }
-    while ( isspace( buf[0] ) );
+    while ( isspace( (unsigned char)buf[0] ) );
 
     i = 1;
     while ( i < sizeof( buf ) -1 &&
 	    read( fd, &buf[i], 1 ) == 1 &&
-	    ! isspace( buf[i] ) )
+	    ! isspace( (unsigned char)buf[i] ) )
     {
 	i++;
     }
 
-    if ( ! isspace( buf[i] ) ) return -1;
+    if ( ! isspace( (unsigned char)buf[i] ) ) return -1;
 
     buf[i] = 0;
 
@@ -318,6 +318,7 @@ fprintf( stderr, "end of line, c=%d, run=%d, bit=%d, x=%d\n", c, run, bit, x );
 	}
         puteol();
     }				/* end for ( all y ) */
+    free(linebuf);
 }
 
 void convert_pbm _P2( (fd, g3_page_width), int fd, int g3_page_width )
@@ -445,6 +446,12 @@ int main _P2( (argc, argv), int argc, char ** argv )
     if ( pbm_xsize == -1 || pbm_ysize == -1 )
     {
 	fprintf( stderr, "%s: error reading PBM header\n", argv[0] );
+	exit(4);
+    }
+
+    if ( pbm_xsize <= 0 || pbm_ysize <= 0 )
+    {
+	fprintf( stderr, "%s: malformed PBM file (negative width or height)\n", argv[0] );
 	exit(4);
     }
 

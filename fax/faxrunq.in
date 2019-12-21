@@ -11,9 +11,12 @@
 # For heavy-duty usage (multiple lines, many 100 faxes per day), check
 # out faxrunqd.
 #
-# RCS: $Id: faxrunq.in,v 4.20 2006/04/09 16:48:21 gert Exp $ Copyright (C) 1994 Gert Doering
+# RCS: $Id: faxrunq.in,v 4.21 2010/06/28 11:22:20 gert Exp $ Copyright (C) 1994 Gert Doering
 #
 # $Log: faxrunq.in,v $
+# Revision 4.21  2010/06/28 11:22:20  gert
+# change "failed fax" e-mail to show "faxq -r $job" as how-to-renew command
+#
 # Revision 4.20  2006/04/09 16:48:21  gert
 # fix quoting bug in `date` command (for acct.log) - Klaus Weglehner
 #
@@ -177,7 +180,7 @@ do
 	  $AWK 'BEGIN { user=""; mail=""; verbto=""; time=""; re=""; ah=""; }
 		$1=="user" { user=$2 }
 		$1=="mail" { mail=substr( $0, 6) }
-		$1=="phone" { printf "PHONE=%s;", $2 }
+		$1=="phone" { printf "PHONE=\"%s\";", $2 }
 		$1=="time" { time=$2 }
 		$1=="verbose_to" { verbto=substr($0,12) }
 		$1=="subject" { re=substr($0,9) }
@@ -208,12 +211,12 @@ do
     command=`tr -d '\042\047\140\134\044\073' <JOB | \
              $AWK 'BEGIN { phone="-"; flags=""; pages="" }
 		  $1=="phone" { phone=$2 }
-		  $1=="header"     { flags=flags" -h "$2 }
+		  $1=="header"     { flags=flags" -h \""$2"\"" }
 		  $1=="poll"       { flags=flags" -p" }
 		  $1=="normal_res" { flags=flags" -n" }
 		  $1=="acct_handle" { flags=flags" -A \""substr($0,13)"\"" }
-		  $1=="pages" { for( i=2; i<=NF; i++) pages=pages$i" " }
-		  END { printf "'"$FAX_SENDER"' -v%s %s %s", \
+		  $1=="pages" { for( i=2; i<=NF; i++) pages=pages"\""$i"\" " }
+		  END { printf "'"$FAX_SENDER"' -v%s \"%s\" %s", \
 			       flags, phone, pages }' -`
 
 #
@@ -331,8 +334,7 @@ do
 		  test -z "$RE" || \
 		    $echo "(Subject was: $RE)\n"
 		  $echo "The fax job is suspended, you can requeue it with the command:"
-		  $echo "    cd $FAX_SPOOL_OUT/"`dirname $job`
-		  $echo "    mv JOB.suspended JOB\n"
+		  $echo "    faxq -r "`dirname $job`"\n"
 		  $echo "log file follows:"
 		  cat JOB ) |
 		$MAILER "$MAIL_TO"

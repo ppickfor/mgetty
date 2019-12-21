@@ -1,4 +1,4 @@
-#ident "$Id: g3cat.c,v 4.5 2005/02/27 19:03:37 gert Exp $ (c) Gert Doering"
+#ident "$Id: g3cat.c,v 4.8 2016/02/09 15:13:31 gert Exp $ (c) Gert Doering"
 
 /* g3cat.c - concatenate multiple G3-Documents
  *
@@ -11,6 +11,23 @@
  *                -a (byte-align EOLs)
  *		  -h <lines> put <lines> empty lines on top of page
  *		  -p <pad>   zero-fill all lines up to <pad> bytes
+ *
+ * $Log: g3cat.c,v $
+ * Revision 4.8  2016/02/09 15:13:31  gert
+ * replace "inline" with "static inline" - C99 compilers interpret naked
+ * inline as "extern inline" and omit function body, so if the function
+ * can not be inlined, it is just plain not there...
+ * (http://stackoverflow.com/questions/216510/extern-inline/216546#216546)
+ *
+ * Revision 4.7  2014/02/02 11:57:59  gert
+ * Michal Sekletar:
+ *   pass actual file descriptor to close(), not negative result from read()
+ *
+ * Revision 4.6  2010/10/08 10:49:23  gert
+ * add CVS Log tag
+ * when reporting invalid code, lseek() on "fd", not on stdin (bugfix) and
+ * use "SEEK_CUR" instead of "1" (easier to read and more portable code)
+ *
  */
 
 /* #define DEBUG 1 */
@@ -44,7 +61,7 @@ static int b_written = 0;		/* bytes of a line already */
 					/* written */
 
 #ifdef __GNUC__
-inline
+static inline
 #endif
 void putcode _P2( (code, len), int code, int len )
 {
@@ -67,7 +84,7 @@ void putcode _P2( (code, len), int code, int len )
 }
 
 #ifdef __GNUC__
-inline
+static inline
 #endif
 void putwhitespan _P1( (l), int l )
 {
@@ -98,7 +115,7 @@ void putwhitespan _P1( (l), int l )
 }
 
 #ifdef __GNUC__
-inline
+static inline
 #endif
 void putblackspan _P1( (l), int l )
 {
@@ -129,7 +146,7 @@ void putblackspan _P1( (l), int l )
 }
 
 #ifdef __GNUC__
-inline
+static inline
 #endif
 void puteol _P0( void )			/* write byte-aligned EOL */
 {
@@ -271,7 +288,7 @@ int main _P2( (argc, argv),
 
 	have_warned = 0;
 	rs = read( fd, rbuf, sizeof(rbuf) );
-	if ( rs < 0 ) { perror( "read" ); close( rs ); exit(8); }
+	if ( rs < 0 ) { perror( "read" ); close( fd ); exit(8); }
 
 			    /* skip GhostScript header */
 	rp = ( rs >= 64 && strcmp( rbuf+1, "PC Research, Inc" ) == 0 ) ? 64 : 0;
@@ -331,7 +348,7 @@ int main _P2( (argc, argv),
 	    if ( p == NULL )	/* invalid code */
 	    { 
 		fprintf( stderr, "invalid code, row=%d, col=%d, file offset=%lx, skip to eol\n",
-			 row, col, (unsigned long)lseek( 0, 0, 1 ) - rs + rp );
+			 row, col, (unsigned long)lseek( fd, 0, SEEK_CUR ) - rs + rp );
 		while ( ( data & 0x03f ) != 0 )
 		{
 		    data >>= 1; hibit--;

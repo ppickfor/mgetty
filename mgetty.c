@@ -1,4 +1,4 @@
-#ident "$Id: mgetty.c,v 4.40 2005/12/31 15:54:01 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: mgetty.c,v 4.46 2018/03/06 12:14:50 gert Exp $ Copyright (c) Gert Doering"
 
 /* mgetty.c
  *
@@ -9,6 +9,36 @@
  * paul@devon.lns.pa.us, and are used with permission here.
  *
  * $Log: mgetty.c,v $
+ * Revision 4.46  2018/03/06 12:14:50  gert
+ * use return code from cid-program to influence rings_wanted
+ *
+ * Revision 4.45  2018/03/06 11:37:51  gert
+ * Alex Manoussakis: cid-program patch set
+ *
+ * Revision 4.44  2018/03/05 18:34:05  gert
+ * Add new config option "open-delay <msec>" (same thing as for sendfax)
+ *
+ * Feature wish from Marc Daniel Fege <marc@fege.net>, needed on some ELSAs
+ *
+ * Revision 4.43  2012/02/01 14:12:29  gert
+ * if running mgetty on AIX with AIX' resource management controller, we
+ * need to create the necessary utmp entries (INIT and LOGIN) ourselves,
+ * as there is no "init" to do that for us.  #ifdef AIX_SRC
+ *
+ * Revision 4.42  2010/09/22 09:00:29  gert
+ * move handle_incoming_sms() prototype from mgetty.h to mgetty.c - the easy
+ * way to work around uid_t and gid_t not being defined in all .c files
+ *
+ * Revision 4.41  2010/09/17 15:36:31  gert
+ * add handling for incoming SMS messages and SMS status reports (-> GSM modem)
+ *   - recognize +CMTI: and +CDSI: messages
+ *   - new "action" for ring.c: A_SMS_IN / A_SMS_REPORT
+ *   - new mgetty state: St_incoming_sms
+ *   - call out to "handle_incoming_sms()" in sms.c
+ *   - all this is #ifdef SMS, so no code change otherwise
+ *
+ * change st_dialout() to include dialout process command line in lprintf()
+ *
  * Revision 4.40  2005/12/31 15:54:01  gert
  * correctly handle non-adaptive fax answer in class 1/1.0 mode (modem will
  * send "CONNECT", meaning "I'm in fax mode, please send DIS frame"...)
@@ -59,6 +89,10 @@ chat_action_t	ring_chat_actions[] = { { "CONNECT",	A_CONN },
 #ifdef VOICE
 					{ "VCON",       A_VCON },
 #endif
+#ifdef SMS
+					{ "+CMTI:",	A_SMS_IN },
+					{ "+CDSI:",	A_SMS_REPORT },
+#endif /* SMS */
 					{ NULL,		A_FAIL } };
 
 /* the same actions are recognized while answering as are */
@@ -81,6 +115,12 @@ int getlogname _PROTO(( char * prompt, TIO * termio,
 
 /* conf_mg.c */
 void exit_usage _PROTO((int num));
+
+/* sms.c */
+#ifdef SMS
+int handle_incoming_sms _PROTO(( boolean is_report, int fd, 
+				 char * sms_handler, uid_t uid, gid_t gid ));
+#endif
 
 char	* Device;			/* device to use */
 char	* DevID;			/* device name withouth '/'s */
@@ -141,6 +181,9 @@ enum mgetty_States
 					   lockfile to disappear */
        St_get_login,			/* prompt "login:", call login() */
        St_callback_login,		/* ditto, but after callback */
+#ifdef SMS
+       St_incoming_sms,			/* +CMTI/+CDSI detected */
+#endif
        St_incoming_fax			/* +FCON detected */
    } mgetty_state = St_unknown;
 
@@ -219,17 +262,22 @@ enum mgetty_States st_sig_callback _P2( (pid, devname),
 enum mgetty_States st_dialout _P1( (devname), char * devname )
 {
     int pid;
+    char * cmd;
     
     /* the line is locked, a parallel dialout is in process */
 
     virtual_ring = FALSE;			/* used to signal callback */
 
+    pid = checklock( Device );		/* !! FIXME, ugly */
+    cmd = get_ps_args(pid);
+    lprintf( L_NOISE, "dialout in progress: '%.80s'!",
+					cmd != NULL?  cmd: "<unknown>" );
+
     /* write a note to utmp/wtmp about dialout, including process args
      * (don't do this on two-user-license systems!)
      */
 #ifndef USER_LIMIT
-    pid = checklock( Device );		/* !! FIXME, ugly */
-    make_utmp_wtmp( Device, UT_USER, "dialout", get_ps_args(pid) );
+    make_utmp_wtmp( Device, UT_USER, "dialout", cmd );
 #endif
 
     /* close all file descriptors -> other processes can read port */
@@ -279,7 +327,7 @@ int main _P2((argc, argv), int argc, char ** argv)
     int		rings_wanted;
     int		rings = 0;
     int		dist_ring = 0;		/* type of RING detected */
-    boolean	cid_program_ran = FALSE;/* Only run cid_program once per call */
+    boolean	cid_program_ran = FALSE; /* Only run cid_program once per call */
 
 #if defined(_3B1_) || defined(MEIBE) || defined(sysV68)
     extern struct passwd *getpwuid(), *getpwnam();
@@ -449,6 +497,15 @@ int main _P2((argc, argv), int argc, char ** argv)
 	lprintf( L_FATAL, "cannot get terminal line dev=%s, exiting", Device);
 	exit(30);
     }
+
+    /* some modems need time to spit out an "OK" or whatever after
+     * DTR toggle - so, optionally, wait some time
+     */
+    if ( c_isset(open_delay) )
+    {
+	lprintf( L_NOISE, "pausing %d ms", c_int(open_delay));
+	delay(c_int(open_delay));		/* give modem time to settle */
+    }
     
     /* drain input - make sure there are no leftover "NO CARRIER"s
      * or "ERROR"s lying around from some previous dial-out
@@ -528,7 +585,7 @@ int main _P2((argc, argv), int argc, char ** argv)
 
     rmlocks();	
 
-#if ( defined(linux) && defined(NO_SYSVINIT) ) || defined(sysV68)
+#if ( defined(linux) && defined(NO_SYSVINIT) ) || defined(sysV68) || defined(AIX_SRC)
     /* on linux, "simple init" does not make a wtmp entry when you
      * log so we have to do it here (otherwise, "who" won't work) */
     make_utmp_wtmp( Device, UT_INIT, "uugetty", NULL );
@@ -596,7 +653,6 @@ int main _P2((argc, argv), int argc, char ** argv)
 
 	    if ( makelock(Device) == FAIL)
 	    {
-		lprintf( L_NOISE, "lock file exists (dialout)!" );
 		mgetty_state = St_dialout;
 		break;
 	    }
@@ -688,6 +744,11 @@ int main _P2((argc, argv), int argc, char ** argv)
 		sleep(5); exit(20); break;
 	      case A_FAX:	/* +FCON */
 		mgetty_state = St_incoming_fax; break;
+#ifdef SMS
+	      case A_SMS_IN:		/* +CMTI */
+	      case A_SMS_REPORT:	/* +CDSI */
+		mgetty_state = St_incoming_sms; break;
+#endif
 	      default:
 		lprintf( L_MESG, "unexpected action: %d", what_action );
 		exit(20);
@@ -740,21 +801,28 @@ int main _P2((argc, argv), int argc, char ** argv)
 
 	    while ( rings < rings_wanted )
 	    {
-		int w;
+		int w, rc;
 
-		w = wait_for_ring( STDIN, c_chat(msn_list), 
-				   ( c_bool(ringback) && rings == 0 )
-				   ? c_int(ringback_time) : ring_chat_timeout,
-				   ring_chat_actions, &what_action, 
+		w = wait_for_ring( STDIN, c_chat(msn_list),
+				   ( c_bool(ringback) && rings == 0 ) ?
+				   c_int(ringback_time) : ring_chat_timeout,
+				   ring_chat_actions, &what_action,
 				   &dist_ring );
 
 		/* Inform about Caller ID. If we haven't gotten the info by 3rd
 		 * ring, it's hopeless; just report that the phone rang. */
-		if ( c_isset(cid_program) && !cid_program_ran
-		     && (rings >= 2 || *CallName || strcmp(CallerId, "none")) )
+		if ( c_isset(cid_program) && !cid_program_ran &&
+		     (rings >= 2 || *CallName || strcmp(CallerId, "none") != 0) )
 		{
-		    cnd_call( c_string(cid_program), Device, dist_ring );
+		    rc = cnd_call( c_string(cid_program), Device, dist_ring );
 		    cid_program_ran = TRUE;
+
+		    /* return code 10+n -> answer after n rings */
+		    if ( rc > 10 )
+		    {
+			rings_wanted = rc - 10;
+			lprintf( L_MESG, "cid-program: set rings_wanted=%d", rings_wanted );
+		    }
 		}
 
 		if ( w == FAIL )
@@ -795,6 +863,11 @@ Ring_got_action:
 		mgetty_state = St_get_login; break;
 	      case A_FAX:		/* +FCON */
 		mgetty_state = St_incoming_fax; break;
+#ifdef SMS
+	      case A_SMS_IN:		/* +CMTI */
+	      case A_SMS_REPORT:	/* +CDSI */
+		mgetty_state = St_incoming_sms; break;
+#endif
 #ifdef VOICE
 	      case A_VCON:
 		vgetty_button(rings);
@@ -956,6 +1029,18 @@ Ring_got_action:
 	    rmlocks();
 	    exit( 0 );
 	    break;
+
+#ifdef SMS
+	  case St_incoming_sms:
+	    /* incoming SMS message/status report, receive it (->sms.c) */
+
+	    lprintf( L_MESG, "start SMS handler..." );
+	    get_ugid( &c.sms_handler_user, &c.sms_handler_group, &uid, &gid );
+	    handle_incoming_sms( what_action == A_SMS_REPORT, STDIN, 
+				 c_string(sms_handler), uid, gid );
+	    mgetty_state = St_go_to_jail;
+	    break;
+#endif
 	    
 	  default:
 	    /* unknown machine state */

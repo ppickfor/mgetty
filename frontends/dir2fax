@@ -1,0 +1,95 @@
+#!/bin/sh
+#
+# simplistic server side gatekeeper script
+#
+# periodically poll a certain directory ("FAX_IN_DIR").  If there is any
+# file present, take all digits from the filename, and pass that plus
+# the file itself to faxspool(1)
+#
+# so a file "fax-12345.pdf" would result in "faxspool 12345 fax-12345.pdf"
+# being called.  Use "faxspool.rules" to ensure that faxspool knows how 
+# to convert the document formats your users drop there...
+#
+# afterwards, send a mail to the owner of the file that the job was
+# queued, and move the file to "FAX_ARCH_DIR", unless empty - in that
+# case, delete
+#
+# to be run from root's crontab
+#
+# $Log: dir2fax,v $
+# Revision 1.1  2014/01/31 16:43:48  gert
+# Simplistic script to scan an "incoming" directory and fax-away all that
+# can be found in there.
+#
+#
+
+FAX_IN_DIR=/var/spool/fax/to-go
+FAX_ARCH_DIR=/var/spool/fax/archive
+
+# "stat" tool to provide owner of file (so mail can be sent)
+# On BSD, use
+OWNER_STAT="stat -f %Su"
+# on Linux, use
+# OWNER_STAT="stat -c %U"
+
+if [ ! -d $FAX_IN_DIR ] ; then
+    echo "$0: '$FAX_IN_DIR' is no directory, abort." >&2
+    exit 1
+fi
+
+if [ ! -w $FAX_IN_DIR ] ; then
+    echo "$0: '$FAX_IN_DIR' not writeable, abort." >&2
+    exit 1
+fi
+
+cd $FAX_IN_DIR || exit 2
+
+for f in *
+do
+    if [ "$f" = "*" ] ; then exit 0 ; fi
+
+    case $f in
+	*.tmp) continue ;;
+    esac
+
+    echo "$f..."
+    TMP=`mktemp -t dir2fax`
+    NUMBER=`echo "$f" | tr -dc '[0-9]'`
+    OWNER=`$OWNER_STAT "$f"`
+
+    if [ -z "$NUMBER" ] ; then
+	echo "can't fax $f: no digits in filename" | \
+		mail -s "dir2fax report" $OWNER
+	rm -f "$f"
+    fi
+
+    faxspool -f $OWNER $NUMBER "$f" >$TMP 2>&1
+    rc=$?
+
+    (
+	cat <<EOF
+To: $OWNER
+From: root (dir2fax)
+cc: faxadmin
+Subject: fax $f to $NUMBER
+
+EOF
+	if [ "$rc" = 0 ] ; then
+	    echo "Your fax job $f was queued successfully."
+	else
+	    echo "Problems queueing your fax job $f, see below:"
+	fi
+	echo
+	cat $TMP
+
+        if [ -d "$FAX_ARCH_DIR" ] ; then
+	    arch="$FAX_ARCH_DIR/`date +%s`-$f"
+	    echo
+	    echo "archived to $arch"
+	    mv -f "$f" "$arch"
+	else
+	    rm -f "$f"
+	fi
+    ) | /usr/sbin/sendmail -t
+    rm -f $TMP
+done

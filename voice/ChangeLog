@@ -1,3 +1,7 @@
+2010-10-28  Sergey Trubnikov (via Marc SCHAEFER)
+
+	* libvoice/detect.c: add ATI code 1511 for ZyXEL Omni56k
+
 2005-04-10  Peter 'tkvoice'
 
 	* libvoice/detect.c: add ATI codes for recent MT5634ZPX modem

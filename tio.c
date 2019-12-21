@@ -1,4 +1,4 @@
-#ident "@(#)$Id: tio.c,v 4.9 2006/06/14 09:49:24 gert Exp $ Copyright (c) 1993 Gert Doering"
+#ident "@(#)$Id: tio.c,v 4.10 2014/02/02 13:42:40 gert Exp $ Copyright (c) 1993 Gert Doering"
 
 /* tio.c
  *
@@ -56,6 +56,10 @@
 #   define TAB3 OXTABS
 #  endif	/* !NeXT */
 # endif
+#endif
+
+#ifdef BSD
+# include <sys/ioctl.h>
 #endif
 
 /* baud rate table */

@@ -1,4 +1,4 @@
-#ident "$Id: faxq-helper.c,v 4.16 2005/04/10 20:47:43 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: faxq-helper.c,v 4.17 2014/02/02 13:44:26 gert Exp $ Copyright (c) Gert Doering"
 
 /* faxq-helper.c
  *
@@ -48,6 +48,11 @@
  *       as portable as the remaining mgetty code.  Send diffs :-)
  *
  * $Log: faxq-helper.c,v $
+ * Revision 4.17  2014/02/02 13:44:26  gert
+ * warning cleanup:
+ *   convert all "char" expressions to (uch) when calling ctype.h macros (*sigh*)
+ *   fix signed/unsigned char warning in function calls
+ *
  * Revision 4.16  2005/04/10 20:47:43  gert
  * make do_sanitize() work on a copy of the input line
  * (strtok() modifies the input string, leading to corrupt JOB files)
@@ -115,7 +120,7 @@ int validate_job_id( char * JobID )
     if ( *p++ != 'F' ) rc = -1;
     while( *p != '\0' && rc == 0 )
     {
-	if ( ! isdigit( *p ) ) rc = -1;
+	if ( ! isdigit( (unsigned char)*p ) ) rc = -1;
 	p++;
     }
     if ( strlen( JobID ) > MAXJIDLEN ) rc = -1;
@@ -284,7 +289,7 @@ again:
     l = read( fd, buf, sizeof(buf)-1 );
     if ( l >= 0 ) buf[l] = '\0';
 
-    if ( l < 0 || l >= sizeof(buf)-1 || ! isdigit( buf[0] ) )
+    if ( l < 0 || l >= sizeof(buf)-1 || ! isdigit( (unsigned char)buf[0] ) )
     {
 	eout( "sequence file '%s' corrupt\n", FAX_SEQ_FILE );
 	goto close_and_out;
@@ -378,7 +383,9 @@ int fd, r, w;
 
     while( *p != '\0' )
     {
-	if ( *p == '/' || *p == '\\' || isspace(*p) || !isprint(*p) )
+	if ( *p == '/' || *p == '\\' || 
+                isspace( (unsigned char)*p ) || 
+		!isprint( (unsigned char)*p ) )
 	{
 	    eout( "invalid char. '%c' in file name '%s', abort\n",
 		  *p, outfilename );

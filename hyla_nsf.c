@@ -1,4 +1,4 @@
-/* $Id: hyla_nsf.c,v 4.8 2010/06/05 09:49:37 gert Exp $ */
+/* $Id: hyla_nsf.c,v 4.9 2014/02/04 15:35:28 gert Exp $ */
 /* 
  * The tables in this file are taken from the HylaFAX distribution.  Thus,
  * the Hylafax copyright (below) applies, not the mgetty copyright (GPL).
@@ -307,12 +307,13 @@ static const NSFData KnownNSF[] =
     {"\x86\x00\x1A", 3, "unknown - Korea 1A", false },
     {"\x86\x00\x40", 3, "unknown - Korea 40", false },
     {"\x86\x00\x48", 3, "Samsung/Dell", false },
-    {"\x86\x00\x52", 3, "unknown - Korea 52", false },
+    {"\x86\x00\x52", 3, "Samsung", false },
     {"\x86\x00\x5A", 3, "Samsung", false },
     {"\x86\x00\x5E", 3, "Xerox", false },
     {"\x86\x00\x66", 3, "unknown - Korea 66", false },
     {"\x86\x00\x6E", 3, "unknown - Korea 6E", false },
-    {"\x86\x00\x82", 3, "unknown - Korea 82", false },
+    {"\x86\x00\x82", 3, "Samsung", false },
+    {"\x86\x00\x85", 3, "Samsung", false },
     {"\x86\x00\x88", 3, "Ricoh", false },
     {"\x86\x00\x8A", 3, "unknown - Korea 8A", false },
     {"\x86\x00\x8C", 3, "Samsung", false, 3, 4, Samsung8C },
@@ -326,7 +327,7 @@ static const NSFData KnownNSF[] =
     {"\x86\x00\xD2", 3, "unknown - Korea D2", false },
     {"\x86\x00\xDA", 3, "Xerox", false, 3, 4, XeroxDA },
     {"\x86\x00\xE2", 3, "unknown - Korea E2", false },
-    {"\x86\x00\xEC", 3, "unknown - Korea EC", false },
+    {"\x86\x00\xEC", 3, "Xerox", false },
     {"\x86\x00\xEE", 3, "unknown - Korea EE", false },
     /* United Kingdom */
     {"\xB4\x00\xB0", 3, "DCE",       false },

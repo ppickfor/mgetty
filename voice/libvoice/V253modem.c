@@ -172,13 +172,12 @@ void V253_init_compression_table() {
   Kompressiontable[4]=cvd.compression_4bit_adpcm.d.i; /* 4bit ADPCM for some ELSA-modems */
   Kompressiontable[5]=cvd.compression_4bit_ima_adpcm.d.i; /* ->4bit IMA ADPCM for the ML 56k Fun, Internet II and Lucent*/
   Kompressiontable[6]=cvd.compression_8bit_ulaw.d.i; /* 8bit uLAW for the ML 56k Fun and Lucent*/
-  Kompressiontable[7]=cvd.compression_8bit_alaw.d.i; /* 8bit aLAW for the ML 56k Fun and Lucent*/
+  Kompressiontable[7]=cvd.compression_8bit_ulaw.d.i; /* 8bit aLAW for the ML 56k Fun and Lucent*/
   Kompressiontable[8]=cvd.compression_8bit_linear_unsigned.d.i; // 8 Bit PCM/8 bit linear
   Kompressiontable[9]=cvd.compression_8bit_linear_signed.d.i; // 8 Bit signed PCM
   Kompressiontable[10]=cvd.compression_8bit_ulaw.d.i; /* ITU defined uLaw */
   Kompressiontable[11]=cvd.compression_8bit_alaw.d.i; /* ITU defined aLaw */
   Kompressiontable[12]=cvd.compression_16bit_linear_signed.d.i; /* ITU defined signed PCM 16-bit Intel Order */
-  Kompressiontable[13]=cvd.compression_16bit_linear_unsigned.d.i; /* ITU defined unsigned PCM 16-bit Intel Order */
 };
 
 #ifdef __USE_GNU
@@ -244,32 +243,16 @@ void V253_querry_compressions() {
 	 lprintf(L_NOISE, "Mapped 4 bit IMA ADPCM, 5 -> %d",Kompressiontable[5]);
        } else if(mSTRSTR(buffer,"ULAW")) {
 	 // The leading number in buffer contains the modem compression id
-	 Kompressiontable[6]=
-           Kompressiontable[10]= strtol(buffer, NULL, 10);
-	 lprintf(L_NOISE, "Mapped ulaw, 6, 10 -> %d",Kompressiontable[10]);
-       } else if(mSTRSTR(buffer,"Mu-Law")) {
-	 // The leading number in buffer contains the modem compression id
-	 Kompressiontable[6]=
-           Kompressiontable[10]= strtol(buffer, NULL, 10);
-	 lprintf(L_NOISE, "Mapped ulaw, 6, 10 -> %d",Kompressiontable[10]);
+	 Kompressiontable[10]= strtol(buffer, NULL, 10);
+	 lprintf(L_NOISE, "Mapped ulaw, 10 -> %d",Kompressiontable[10]);
        } else if(mSTRSTR(buffer,"ALAW")) {
 	 // The leading number in buffer contains the modem compression id
-	 Kompressiontable[7]=
-           Kompressiontable[11]= strtol(buffer, NULL, 10);
-	 lprintf(L_NOISE, "Mapped alaw, 7, 11 -> %d",Kompressiontable[11]);
-       } else if(mSTRSTR(buffer,"A-Law")) {
-	 // The leading number in buffer contains the modem compression id
-	 Kompressiontable[7]=
-           Kompressiontable[11]= strtol(buffer, NULL, 10);
-	 lprintf(L_NOISE, "Mapped alaw, 7, 11 -> %d",Kompressiontable[11]);
+	 Kompressiontable[11]= strtol(buffer, NULL, 10);
+	 lprintf(L_NOISE, "Mapped alaw, 11 -> %d",Kompressiontable[11]);
        } else if(mSTRSTR(buffer,"16-BIT LINEAR")) {
 	 // The leading number in buffer contains the modem compression id
 	 Kompressiontable[13]= strtol(buffer, NULL, 10);
 	 lprintf(L_NOISE, "Mapped 16 bit linear, 13 -> %d",Kompressiontable[13]);
-       } else if(mSTRSTR(buffer,"14 bit PCM")) {
-	 // The leading number in buffer contains the modem compression id
-	 Kompressiontable[13]= strtol(buffer, NULL, 10);
-	 lprintf(L_NOISE, "Mapped 16 bit linear (14bit), 13 -> %d",Kompressiontable[13]);
        } else 
 #endif
 	 {
@@ -352,11 +335,6 @@ int V253modem_set_compression (p_int *compression, p_int *speed, int *bits)
        {
 	 			/* Chipset Agere/Lucent Venus v.92 found on 
 	  			 * ActionTec v.92 Call Waiting PCI modem    */
-	 *bits=16;		/* 16 bit			   	    */
-	 break;
-       }
-       case 13:        /* ITU defined unsigned PCM 16-bit Intel Order */
-       {
 	 *bits=16;		/* 16 bit			   	    */
 	 break;
        }

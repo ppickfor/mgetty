@@ -1,4 +1,4 @@
-/* $Id: t_g3f_c.c,v 1.2 2007/03/09 16:07:40 gert Exp $
+/* $Id: t_g3f_c.c,v 1.3 2018/03/06 12:27:04 gert Exp $
  *
  * test program for mgetty/sendfax "g3file.c"
  *
@@ -6,6 +6,9 @@
  *  (called from t_g3file script)
  *
  * $Log: t_g3f_c.c,v $
+ * Revision 1.3  2018/03/06 12:27:04  gert
+ * add missing <unistd.h>
+ *
  * Revision 1.2  2007/03/09 16:07:40  gert
  * add stdlib.h
  *
@@ -22,6 +25,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
 #ifdef T_LOG_VERBOSE
 # include <stdarg.h>
 #endif

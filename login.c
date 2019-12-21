@@ -1,4 +1,4 @@
-#ident "$Id: login.c,v 4.19 2003/12/05 22:28:58 gert Exp $ Copyright (C) 1993 Gert Doering"
+#ident "$Id: login.c,v 4.21 2018/03/06 11:37:51 gert Exp $ Copyright (C) 1993 Gert Doering"
 
 
 /* login.c
@@ -192,7 +192,7 @@ void login_dispatch _P3( (user, is_callback, cfg_file ),
 	     */
 	    if ( file_version > 1 )
 	    {
-		char cbq = toupper( *(line++) );
+		char cbq = toupper( (uch)*(line++) );
 
 		if ( ( cbq == 'Y' && ! is_callback ) ||
 		     ( cbq == 'N' &&   is_callback ) )
@@ -201,8 +201,8 @@ void login_dispatch _P3( (user, is_callback, cfg_file ),
 		    continue;
 		}
 		/* skip to next field */
-		while( *line && !isspace(*line) ) line++;
-		while( isspace(*line) ) line++;
+		while( *line && !isspace( (uch)*line ) ) line++;
+		while( isspace( (uch)*line ) ) line++;
 	    }
 
 	    /* get (login) user id */
@@ -369,18 +369,3 @@ fallthrough:
     exit(FAIL);
 }
 
-void setup_environment _P0(void)
-{
-    if ( *CallerId )
-	set_env_var( "CALLER_ID", CallerId );
-    if ( *CallDate )
-	set_env_var( "CALL_DATE", CallDate );
-    if ( *CallTime )
-	set_env_var( "CALL_TIME", CallTime );
-    if ( *CallName )
-	set_env_var( "CALLER_NAME", CallName );
-    if ( *CalledNr )
-	set_env_var( "CALLED_ID", CalledNr );
-    set_env_var( "CONNECT", Connect );
-    set_env_var( "DEVICE", Device );
-}

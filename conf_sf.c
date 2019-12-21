@@ -1,8 +1,13 @@
-#ident "$Id: conf_sf.c,v 4.15 2009/03/19 15:13:53 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: conf_sf.c,v 4.16 2010/09/17 15:27:04 gert Exp $ Copyright (c) Gert Doering"
 
 /* conf_sf.c
  *
  * configuration defaults / configuration reading code for sendfax
+ *
+ * $Log: conf_sf.c,v $
+ * Revision 4.16  2010/09/17 15:27:04  gert
+ * add CVS log tags
+ *
  */
 
 #include <stdio.h>

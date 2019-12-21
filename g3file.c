@@ -1,4 +1,4 @@
-#ident "$Id: g3file.c,v 1.2 2006/09/26 15:37:55 gert Exp $"
+#ident "$Id: g3file.c,v 1.3 2014/02/02 13:44:19 gert Exp $"
 
 /* g3file.c
  *
@@ -13,6 +13,11 @@
  *    + checking receive copy quality                       [unimp]
  *
  * $Log: g3file.c,v $
+ * Revision 1.3  2014/02/02 13:44:19  gert
+ * warning cleanup:
+ *   convert all "char" expressions to (uch) when calling ctype.h macros (*sigh*)
+ *   fix signed/unsigned char warning in function calls
+ *
  * Revision 1.2  2006/09/26 15:37:55  gert
  * - on "device" file descriptors, check after each write() block whether there
  *   is any sort of input data available - Xon/Xoff, modem errors, ...
@@ -100,7 +105,7 @@ int g3_open_read _P1((filename), char * filename )
 
     /* digifax file?  (G3 + 64 byte header) -> skip */
     if ( g3_rf_num >= 64 &&
-	 strcmp( g3_rf_buf+1, "PC Research, Inc" ) == 0 )
+	 strcmp( (char*) g3_rf_buf+1, "PC Research, Inc" ) == 0 )
     {
 	lprintf( L_MESG, "skipping over DigiFax header" );
 	g3_rf_idx = 64;
@@ -205,7 +210,7 @@ int lines_seen=-1;		/* scan lines in file */
     }
     if ( pad_bytes < 0 ) pad_bytes = 0;		/* be foolproof */
 
-    r_num = in_func( rbuf, sizeof(rbuf) );
+    r_num = in_func( (char*)rbuf, sizeof(rbuf) );
 
     r=0;
     w=0;
@@ -247,7 +252,7 @@ int lines_seen=-1;		/* scan lines in file */
 
         if ( r >= r_num )			/* buffer empty, read more */
 	{
-	    r_num = in_func( rbuf, sizeof(rbuf) );
+	    r_num = in_func( (char*)rbuf, sizeof(rbuf) );
 	    if ( r_num < 0 )
 		{ break; }
 	    r = 0;

@@ -1,4 +1,4 @@
-#ident "$Id: logfile.c,v 4.11 2005/11/26 13:48:16 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: logfile.c,v 4.14 2014/02/02 13:44:18 gert Exp $ Copyright (c) Gert Doering"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -159,12 +159,13 @@ int	log_fd;
 	    do
 	    {
 	        l = read( log_fd, buf, sizeof( buf ) );
-		fwrite( buf, l, 1, pipe_fp );
+		if ( l>0 )
+		    fwrite( buf, l, 1, pipe_fp );
 	    }
 	    while( l == sizeof( buf ) );
 	    fprintf( pipe_fp, "\n------ logfile ends here -----\n" );
+	    close( log_fd );
 	}
-	close( log_fd );
 	pclose( pipe_fp );
     }
 
@@ -175,8 +176,8 @@ int lputc _P2((level, ch), int level, char ch )
 {
     if ( log_fp != NULL && level <= log_level )
     {
-	if ( isprint(ch) ) fputc( ch, log_fp );
-		      else fprintf( log_fp, "[%02x]", (unsigned char) ch );
+	if ( isprint( (uch)ch) ) fputc( ch, log_fp );
+		            else fprintf( log_fp, "[%02x]", (unsigned char) ch );
 	fflush( log_fp );
 #ifdef LOG_CR_NEWLINE
 	if ( ch == '\n' ) fputc( ch, log_fp );
@@ -304,7 +305,7 @@ static int first_open = TRUE;
     if ( level != L_AUDIT )
 	for( p=ws; *p!='\0'; p++ )
 	{
-	    if ( ! isprint(*p) ) *p='_';
+	    if ( ! isprint( (uch)*p ) ) *p='_';
 	}
 
     ti = time(NULL); tm = localtime(&ti);

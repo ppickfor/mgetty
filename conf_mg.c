@@ -1,8 +1,22 @@
-#ident "$Id: conf_mg.c,v 4.19 2009/03/19 15:13:53 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: conf_mg.c,v 4.22 2018/03/06 11:39:25 gert Exp $ Copyright (c) Gert Doering"
 
 /* conf_mg.c
  *
  * configuration defaults / configuration reading code for mgetty
+ *
+ * $Log: conf_mg.c,v $
+ * Revision 4.22  2018/03/06 11:39:25  gert
+ * Alex Manoussakis: cid-program patch set
+ *
+ * Revision 4.21  2018/03/05 18:34:05  gert
+ * Add new config option "open-delay <msec>" (same thing as for sendfax)
+ *
+ * Feature wish from Marc Daniel Fege <marc@fege.net>, needed on some ELSAs
+ *
+ * Revision 4.20  2010/09/14 15:38:27  gert
+ * add CVS log
+ * add options for SMS processing - sms-handler, sms-handler-{user,group}
+ *
  */
 
 #include <stdio.h>
@@ -69,6 +83,7 @@ struct conf_data_mgetty c = {
 
 	{ "toggle-dtr", {TRUE}, CT_BOOL, C_PRESET },
 	{ "toggle-dtr-waittime", {500}, CT_INT, C_PRESET },
+	{ "open-delay", {0}, CT_INT, C_EMPTY },
 	{ "need-dsr", {FALSE}, CT_BOOL, C_PRESET },
 	{ "data-only", {FALSE}, CT_BOOL, C_PRESET },
 	{ "fax-only", {FALSE}, CT_BOOL, C_PRESET },
@@ -141,6 +156,11 @@ struct conf_data_mgetty c = {
 	{ "statistics-file", {0}, CT_STRING, C_EMPTY },
 	{ "gettydefs", {(p_int)GETTYDEFS_DEFAULT_TAG}, CT_STRING, C_PRESET },
 	{ "term", {0}, CT_STRING, C_EMPTY },
+#ifdef SMS
+	{ "sms-handler", {0}, CT_STRING, C_EMPTY },
+	{ "sms-handler-user", {(p_int) "nobody"}, CT_STRING, C_PRESET },
+	{ "sms-handler-group", {0}, CT_STRING, C_EMPTY },
+#endif
 
 	{ NULL, {0}, CT_STRING, C_EMPTY }};
 

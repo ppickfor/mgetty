@@ -4,7 +4,7 @@
 # file suffixes and file format conversions that are not handled by 
 # the built-in routines in "faxspool" can be added here
 #
-# $Id: faxspool.rules,v 4.4 2006/09/29 11:05:30 gert Exp $
+# $Id: faxspool.rules,v 4.5 2011/03/28 18:03:22 gert Exp $
 
 # file name suffix -> file format mapping
 # after the SUFFIX key word, name the extention, and then the file format:
@@ -22,6 +22,8 @@
 SUFFIX .doc doc
 SUFFIX .jpg jpg
 SUFFIX .jpeg jpg
+SUFFIX .htm html
+SUFFIX .html html
 
 # file format -> conversion command rules
 #
@@ -72,3 +74,8 @@ FILTER doc-n /usr/bin/antiword -p a4 $1 | /usr/bin/gs -sDEVICE=faxg3 -r204x98 -s
 # JPG (assumes pretty recent netpbm package)
 FILTER jpg djpeg -grey $1 | pnmscale -xysize 1728 2000 | pamditherbw | pamtopnm | pbm2g3 >$2.001
 FILTER jpg-n djpeg -grey $1 | pnmscale -xysize 1728 1000 | pamditherbw | pamtopnm | pbm2g3 >$2.001
+#
+#
+# HTML via Perl html2ps converter at http://user.it.uu.se/~jan/html2ps.html
+#FILTER html /usr/local/bin/html2ps $1 | /usr/bin/gs -sDEVICE=faxg3 -r204x196 -sOutputFile=$2%03d -dNOPAUSE -q -dSAFER -dBATCH -
+#FILTER html-n /usr/local/bin/html2ps $1 | /usr/bin/gs -sDEVICE=faxg3 -r204x98 -sOutputFile=$2%03d -dNOPAUSE -q -dSAFER -dBATCH -

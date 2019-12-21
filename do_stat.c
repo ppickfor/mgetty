@@ -1,4 +1,4 @@
-#ident "$Id: do_stat.c,v 4.2 1997/12/08 07:47:01 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: do_stat.c,v 4.3 2014/02/02 12:50:48 gert Exp $ Copyright (c) Gert Doering"
 
 /* do_stat.c
  *
@@ -71,11 +71,13 @@ FILE * fp = NULL;			/* target file */
 	    {
 		if ( read( fd, &line[r], 1 ) != 1 )
 		{
+		    alarm(0);
 		    if ( has_timeout )
 			lprintf( L_WARN, "do_stat: timeout" );
 		    else
 			lprintf( L_ERROR, "do_stat: error reading data" );
-		    alarm(0); return;
+		    if ( fp != NULL ) fclose( fp );
+		    return;
 		}
 
 		if ( line[r] == '\r' || line[r] == '\n' )	/* line full */

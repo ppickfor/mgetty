@@ -1,4 +1,4 @@
-#ident "$Id: class1.c,v 4.20 2009/03/19 15:51:17 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: class1.c,v 4.21 2014/04/03 09:04:13 gert Exp $ Copyright (c) Gert Doering"
 
 /* class1.c
  *
@@ -8,6 +8,9 @@
  * Uses library functions in class1lib.c, faxlib.c and modem.c
  *
  * $Log: class1.c,v $
+ * Revision 4.21  2014/04/03 09:04:13  gert
+ * rename FRAMESIZE to C1_FRAMESIZE, collision with AIX header file (grrr)
+ *
  * Revision 4.20  2009/03/19 15:51:17  gert
  * bugfix: new NSF sending code was introducing extra "AT+FTH=3" commands
  * (due to confusion about internal requirements of fax1_send_frame())
@@ -125,7 +128,7 @@ static int fax_scan_times[8] = { 0, 5, 10, 10, 20, 20, 40, 40 };
 int fax1_dial_and_phase_AB _P2( (dial_cmd,fd),  char * dial_cmd, int fd )
 {
 char * p;			/* modem response */
-uch framebuf[FRAMESIZE];
+uch framebuf[C1_FRAMESIZE];
 int first;
 int len;
 #ifdef TORTURE_TEST
@@ -221,7 +224,7 @@ int fax1_send_page _P5( (g3_file, bytes_sent, tio, ppm, fd),
 		        char * g3_file, int * bytes_sent, TIO * tio,
 		        Post_page_messages ppm, int fd )
 {
-uch framebuf[FRAMESIZE];
+uch framebuf[C1_FRAMESIZE];
 char * line;
 char cmd[40];
 char dleetx[] = { DLE, ETX };
@@ -495,7 +498,7 @@ int fax1_highlevel_receive _P6( (fd, pagenum, dirlist, uid, gid, mode ),
 			       int uid, int gid, int mode)
 {
 int rc;
-uch frame[FRAMESIZE];
+uch frame[C1_FRAMESIZE];
 char * p;
 Post_page_messages ppm = pp_mps;
 boolean first = TRUE;

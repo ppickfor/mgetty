@@ -1,10 +1,10 @@
 # Makefile for the "t/" subtree
 # of mgetty+sendfax
 #
-# CVS: $Id: Makefile,v 1.6 2006/09/25 22:23:56 gert Exp $ Copyright (c) Gert Doering
+# CVS: $Id: Makefile,v 1.7 2018/03/06 11:09:18 gert Exp $ Copyright (c) Gert Doering
 #
 
-CC=gcc
+CC=cc
 CFLAGS=-O2 -I.. -g  #-DT_LOG_VERBOSE
 
 TEST_PROGRAMS=t_config t_ring

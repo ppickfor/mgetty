@@ -1,4 +1,4 @@
-#ident "$Id: policy.h,v 4.25 2009/03/19 15:35:34 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: policy.h,v 4.28 2018/03/06 11:07:08 gert Exp $ Copyright (c) Gert Doering"
 
 /* this is the file where all configuration defaults for mgetty / sendfax
  * are specified.
@@ -66,6 +66,15 @@
  * prompt first. Don't forget to activate the /AutoPPP/ line in login.config!
  */
 /* #define AUTO_PPP */
+
+/* SMS support
+ *
+ * if you want to use mgetty on a GSM modem and handle incoming SMS
+ * messages and/or SMS status reports, enable this.  This will add extra
+ * code to mgetty to recognize +CMTI: and +CDSI: messages, and some extra
+ * options (sms-handler*) to control dispatching to external scripts.
+ */
+/* #define SMS */
 
 /* callback config file
  *
@@ -136,10 +145,11 @@
 /* logging */
 
 /* system console - if a severe error happens at startup, mgetty writes
- * a message to this file and aborts
+ * a message to this file and aborts - typically "/dev/console"
  * On SCO, this may be /dev/syscon!
+ * (if this functionality is not wanted or does not work, use /dev/null)
  */
-#define CONSOLE "/dev/console"
+#define CONSOLE "/dev/null"
 
 /* Name of the mgetty log file
  * e.g. "/usr/spool/log/mgetty.log.%s" or "/tmp/log_mg.%s"
@@ -544,28 +554,20 @@
  */
 
 
-/* define mailer that accepts destination on command line and mail text
- * on stdin. For mailers with user friendly interfaces, (such as mail,
- * mailx, elm), include an appropriate subject line in the command
- * definition. If using a mail agent (such as sendmail), that reads
- * mail headers, define NEED_MAIL_HEADERS.
+/* define mail transport agent to use for incoming fax notifications
+ * normally, this will be "sendmail -t -i" (which works for all common
+ * mail transport packages), with the receipient put into the "To:"
+ * line on stdin.
+ * If your mail client needs to have the receipient address on the
+ * command line, define NEED_MAIL_TO_ON_CLI.
  */
-#ifdef SVR4
-# define MAILER		"/usr/bin/mailx -s 'Incoming facsimile message'"
-#else
-# if defined(_AIX) || defined(__NetBSD__) || defined(linux)
-#  define MAILER	"/usr/sbin/sendmail"
-#  define NEED_MAIL_HEADERS
-# endif
-# ifdef M_UNIX		/* SCO */
-#  define MAILER	"/usr/lib/mail/execmail"
-#  define NEED_MAIL_HEADERS
-# endif
+#ifdef M_UNIX		/* SCO */
+# define MAILER	"/usr/lib/mail/execmail"
+# define NEED_MAIL_TO_ON_CLI
 #endif
 
 #ifndef MAILER
-# define MAILER		"/usr/lib/sendmail"
-# define NEED_MAIL_HEADERS
+# define MAILER		"/usr/sbin/sendmail -t -i"
 #endif
 
 /* where to send notify mail about incoming faxes to
@@ -601,3 +603,15 @@
  */
 #define FAX_NSF_PARSER
 
+/* enable sendfax to access a modem that's connected on a different
+ * machine in the network, using ser2net (or something similar) to 
+ * provide mapping from tcp/ip connection to local /dev/tty* device
+ *
+ * the code is hacky - ttyRI<n><mm> is mapped to a socket call to
+ * host "isdnserver<n>" and port 50000+<mm>.  There will be better
+ * support via sendfax.config ("port xxx / server ... ") eventually.
+ *
+ * this code assumes a modern socket API with getaddrinfo(), so it's
+ * off-by-default as it might break on older systems
+ */
+/* #define FAX_SEND_SOCKETS */

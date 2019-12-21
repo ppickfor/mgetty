@@ -1,4 +1,4 @@
-#ident "$Id: g32pbm.c,v 4.3 1998/06/01 12:00:09 gert Exp $ (c) Gert Doering, Chris Lewis et.al."
+#ident "$Id: g32pbm.c,v 4.6 2014/02/02 12:16:39 gert Exp $ (c) Gert Doering, Chris Lewis et.al."
 
 /* G32pbm.c
  *
@@ -7,6 +7,20 @@
  *
  * G3 and PBM code by Gert Doering
  * HP Laserjet and scaling code by Chris Lewis
+ *
+ * $Log: g32pbm.c,v $
+ * Revision 4.6  2014/02/02 12:16:39  gert
+ * Michal Sekletar
+ *   fix memleak in scalebm(): add missing free(mulvec) at end
+ *
+ * Revision 4.5  2014/02/02 11:56:53  gert
+ * Michal Sekletar:
+ *   pass actual file descriptor to close(), not negative result from read()
+ *
+ * Revision 4.4  2010/10/08 10:49:58  gert
+ * add CVS Log tag
+ * when reporting invalid code, use SEEK_CUR for lseek(), not "1" (code cleanup)
+ *
  */
 
 #include <stdio.h>
@@ -135,6 +149,7 @@ char *scalebm _P5( (res, cols, rows, map, bperrow),
     *rows = nr;
     *cols = nc;
     *bperrow = newbperrow;
+    free(mulvec);
     return (newmap);
 }
 
@@ -290,7 +305,7 @@ int	resolution = BASERES;
     color = 0;		/* start with white */
 
     rs = read( fd, rbuf, sizeof(rbuf) );
-    if ( rs < 0 ) { perror( "read" ); close( rs ); exit(8); }
+    if ( rs < 0 ) { perror( "read" ); close( fd ); exit(8); }
 
 			/* skip GhostScript header */
     rp = ( rs >= 64 && strcmp( rbuf+1, "PC Research, Inc" ) == 0 ) ? 64 : 0;
@@ -347,8 +362,8 @@ int	resolution = BASERES;
 
 	if ( p == NULL )	/* invalid code */
 	{ 
-	    fprintf( stderr, "invalid code, row=%d, col=%d, file offset=%lx, skip to eol\n",
-		     row, col, (unsigned long) lseek( fd, 0, 1 ) - rs + rp );
+	    fprintf( stderr, "invalid code, row=%d, col=%d, file offset=%lu, skip to eol\n",
+		     row, col, (unsigned long) lseek( fd, 0, SEEK_CUR ) - rs + rp );
 	    while ( ( data & 0x03f ) != 0 )
 	    {
 		data >>= 1; hibit--;

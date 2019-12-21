@@ -37,26 +37,26 @@ OPT = -g -O2 -Wno-uninitialized -ansi -pedantic
 #LDFLAGS = $(OPT)
 #LIBS = -lsocket
 # vanilla BSD
-#CC = cc
-#CFLAGS = -DBSD $(OPT) -DHELPFILE=$(HELP)
-#LDFLAGS = $(OPT)
-#LIBS =
+CC = cc
+CFLAGS = -DBSD $(OPT) -DHELPFILE=$(HELP) -I/usr/local/include
+LDFLAGS = $(OPT)
+LIBS =
 # sun solaris2 with gcc on supersparc:
 #CC = gcc
 #CFLAGS = -Wall $(OPT) -DHELPFILE=$(HELP) -msupersparc -I/usr/openwin/include
 #LDFLAGS = $(OPT) -L/usr/openwin/lib -R/usr/openwin/lib
 #LIBS =
 # linux
-CC = gcc
-CFLAGS = $(OPT) -DHELPFILE=$(HELP)
-LDFLAGS = $(OPT) -L/usr/X11R6/lib
-LIBS =
+#CC = gcc
+#CFLAGS = $(OPT) -DHELPFILE=$(HELP)
+#LDFLAGS = $(OPT) -L/usr/X11R6/lib
+#LIBS =
 
 ####### End of configurable definitions #######
 OBJS = viewfax.o faxinput.o faxinit.o faxexpand.o
 
 viewfax:	$(OBJS)
-	$(CC) $(LDFLAGS) -o viewfax $(OBJS) -lX11 $(LIBS)
+	$(CC) $(LDFLAGS) -o viewfax $(OBJS) -L/usr/local/lib -lX11 $(LIBS)
 
 g3hack:		g3hack.c
 

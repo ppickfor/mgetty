@@ -3,7 +3,7 @@
 # faxspool - sample script how to spool fax input data to a spool
 #            directory, creating jobs to be run by faxrunq
 #
-# sccsid: $Id: faxspool.in,v 4.36 2010/06/04 12:45:36 gert Exp $ (c) Gert Doering
+# sccsid: $Id: faxspool.in,v 4.38 2014/12/18 13:35:50 gert Exp $ (c) Gert Doering
 #
 # syntax: faxspool [flags] <phone-number> <job(s)>
 #
@@ -26,6 +26,14 @@
 #  3.10.93: use "hp2hig3" for hp-pcl4-files (cl)
 # 19.10.93: phone directories (caz)
 # $Log: faxspool.in,v $
+# Revision 4.38  2014/12/18 13:35:50  gert
+# if existing and executable, use "faxq-helper.$hostname" or "faxq-helper.local"
+# (so you can install localized scripts that do "ssh $server faxq-helper",
+# for example, and not have them overwritten by make install)
+#
+# Revision 4.37  2011/03/28 16:09:07  gert
+# after successful queueing, print number of pages in job (and dest number)
+#
 # Revision 4.36  2010/06/04 12:45:36  gert
 # Implement "start-end" syntax for "-t <time>" flag
 # small bugfix for "echo" message after successful queueing "with -t"
@@ -186,6 +194,13 @@ if [ -d "$HOME" ]; then
   if [ -r $HOME/.faxheader ]; then
     FAX_HEADER=$HOME/.faxheader
   fi
+fi
+
+# use a locally customized version of faxq-helper if it exists
+if [ -x "$FAXQ_HELPER.$HOSTNAME" ] ; then
+    FAXQ_HELPER="$FAXQ_HELPER.$HOSTNAME"
+elif [ -x "$FAXQ_HELPER.local" ] ; then
+    FAXQ_HELPER="$FAXQ_HELPER.local"
 fi
 
 #
@@ -998,7 +1013,7 @@ if [ -z "`find $LAST_RUN -ctime -1 -print 2>/dev/null`" ]
 then
     cat <<HERE
 
-Fax queued successfully.
+Fax queued successfully, $maxnr pages to $phone.
 
 WARNING: faxrunq hasn't been run in the last 24 hours.
          Faxes only get sent out when faxrunq runs! Contact Fax administrator.
@@ -1006,8 +1021,8 @@ WARNING: faxrunq hasn't been run in the last 24 hours.
 HERE
 else
     if  [ -z "$TIME" ] ; then
-	$echo "\nFax queued successfully. Will be sent at next \`\`faxrunq'' run.\n"
+	$echo "\nFax queued successfully, $maxnr pages to $phone.\nFax will be sent at next \`\`faxrunq'' run.\n"
     else
-	$echo "\nFax queued successfully. Will be sent at first \`\`faxrunq'' run\nafter the specified send time '$TIME' has been reached.\n"
+	$echo "\nFax queued successfully, $maxnr pages to $phone.\nFax will be sent at first \`\`faxrunq'' run\nafter the specified send time '$TIME' has been reached.\n"
     fi
 fi

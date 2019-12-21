@@ -1,10 +1,13 @@
-#ident "$Id: class1.h,v 4.12 2009/03/19 15:29:16 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: class1.h,v 4.13 2014/04/03 09:04:13 gert Exp $ Copyright (c) Gert Doering"
 
 /* class1.h
  *
  * common definitions for class 1 fax modules
  *
  * $Log: class1.h,v $
+ * Revision 4.13  2014/04/03 09:04:13  gert
+ * rename FRAMESIZE to C1_FRAMESIZE, collision with AIX header file (grrr)
+ *
  * Revision 4.12  2009/03/19 15:29:16  gert
  * add T30_CAR_HAVE_V21 (do not send AT, we have V21 carrier)
  *
@@ -43,7 +46,7 @@
  *
  */
 
-#define FRAMESIZE	300
+#define C1_FRAMESIZE	300
 
 extern uch fax1_dis;		/* "X"-Bit (received DIS) */
 

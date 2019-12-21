@@ -1,9 +1,12 @@
 /* test program for mgetty's config routines 
  *  - ptr/int + struct size checks
  *
- * $Id: t_config.c,v 1.1 2004/11/02 08:14:19 gert Exp $
+ * $Id: t_config.c,v 1.2 2018/03/06 12:27:56 gert Exp $
  *
  * $Log: t_config.c,v $
+ * Revision 1.2  2018/03/06 12:27:56  gert
+ * cast sizeof() to (int) for printing with %d
+ *
  * Revision 1.1  2004/11/02 08:14:19  gert
  * test ptr/int and struct alignment for mgetty's config routines
  *
@@ -28,7 +31,7 @@ conf_data c_a[2];
      */
     if ( sizeof(test1_i) != sizeof(test1_p) )
     {
-	fprintf( stderr, "%s: test1 FAIL: sizeof(p_int)=%d <-> sizeof(void *)=%d\n", argv[0], sizeof(test1_i), sizeof(test1_p) );
+	fprintf( stderr, "%s: test1 FAIL: sizeof(p_int)=%d <-> sizeof(void *)=%d\n", argv[0], (int)sizeof(test1_i), (int)sizeof(test1_p) );
 	rc++;
     }
 

@@ -1,6 +1,6 @@
 \input texinfo    @c -*-texinfo-*-
 @c %**start of header
-@c $Id: mgetty.texi-in,v 4.69 2008/01/31 16:30:12 gert Exp $ (c) 1993-2000 Gert Doering and Klaus Weidner
+@c $Id: mgetty.texi-in,v 4.72 2018/03/06 12:14:50 gert Exp $ (c) 1993-2000 Gert Doering and Klaus Weidner
 @setfilename mgetty.info
 @settitle mgetty + sendfax
 @c %**end of header
@@ -868,6 +868,17 @@ and crash.
 
 Specifies the time to hold the DTR line low. Default is 500 milliseconds.
 
+@item @code{open-delay} @var{msec}
+
+A few modems respond to raising the DTR line (when opening the device)
+with @samp{OK}.  This can confuse @code{mgetty}, because it will see
+this OK as response to the next command.  In the log file, you can see if
+your modem exhibits this problem if the echo of each @code{AT} command 
+can be seen when waiting for the response to the @emph{next} @code{AT} 
+command.  With @code{open-delay} you can give a number of milliseconds to
+wait after the device is active until @code{mgetty} flushes all incoming
+responses and goes ahead.
+
 @item @code{data-only} @var{yes/no} [-D]
 
 Tells @code{mgetty} to forget about faxing and only use the data part of
@@ -1056,6 +1067,17 @@ Specify a program to be run as soon as Caller ID information comes in
 (typically between 1st and 2nd ring). If Caller ID info is not available by
 the 3rd ring, still run the program (to report the time that the phone rang).
 This allows mgetty to behave like a caller-id box. @xref{Caller-ID}.
+
+The return value of @code{cid-program} is evaluated as follows:
+
+@display
+ 0 - handle call normally
+ 10+n - set number of RINGs to wait for to "n", then proceed
+@end display
+
+so you can use that to have @code{mgetty} answer the phone right away
+for known fax-callers (or voice spammers), and only after 8 rings 
+for everyone else.
 
 @item @code{answer-chat} @var{chat sequence}
 

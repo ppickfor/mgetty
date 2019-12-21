@@ -1,4 +1,4 @@
-#ident "$Id: modem.c,v 4.5 2010/04/26 13:09:21 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: modem.c,v 4.10 2014/02/02 13:44:19 gert Exp $ Copyright (c) Gert Doering"
 
 /* modem.c
  *
@@ -41,7 +41,7 @@ char * mdm_get_line _P1( (fd), int fd )
 
 	lputc( L_JUNK, c );
 
-	if ( isprint( c ) &&
+	if ( isprint( (uch)c ) &&
 	     bufferp < sizeof(buffer) )
 	{
 	    buffer[ bufferp++ ] = c;
@@ -58,9 +58,9 @@ char * mdm_get_line _P1( (fd), int fd )
  * handle all the various class 2 / class 2.0 status responses
  */
 
-static boolean fwf_timeout = FALSE;
+boolean fwf_timeout = FALSE;
 
-static RETSIGTYPE fwf_sig_alarm(SIG_HDLR_ARGS)      	/* SIGALRM handler */
+RETSIGTYPE fwf_sig_alarm(SIG_HDLR_ARGS)      	/* SIGALRM handler */
 {
     signal( SIGALRM, fwf_sig_alarm );
     lprintf( L_WARN, "Warning: got alarm signal!" );
@@ -200,3 +200,4 @@ char * mdm_get_idstring _P3( (send, n, fd), char * send, int n, int fd )
 
     return rbuf;
 }
+

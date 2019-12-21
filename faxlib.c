@@ -1,4 +1,4 @@
-#ident "$Id: faxlib.c,v 4.76 2009/06/12 15:54:02 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: faxlib.c,v 4.80 2014/02/02 13:44:19 gert Exp $ Copyright (c) Gert Doering"
 
 /* faxlib.c
  *
@@ -9,6 +9,24 @@
  * different that it goes to a separate library.
  *
  * $Log: faxlib.c,v $
+ * Revision 4.80  2014/02/02 13:44:19  gert
+ * warning cleanup:
+ *   convert all "char" expressions to (uch) when calling ctype.h macros (*sigh*)
+ *   fix signed/unsigned char warning in function calls
+ *
+ * Revision 4.79  2014/02/02 12:05:46  gert
+ * Michal Sekletar:
+ *   avoid potential buffer overrun (off-by-one) when copying a maximum-length
+ *   NSF (theoretical possiblity as NSF frame length is bounded, but code is
+ *   still not correct)
+ *
+ * Revision 4.78  2014/01/31 10:11:03  gert
+ * add "NO ANSWER" to list of final dial-failed codes
+ *
+ * Revision 4.77  2014/01/28 20:43:00  gert
+ * permit higher max speeds than 14400 by hex-encoding second
+ *  parameter to AT+FDCC (33600='D')
+ *
  * Revision 4.76  2009/06/12 15:54:02  gert
  * add ATI code for Cisco MICA modems
  *
@@ -67,7 +85,7 @@ static void fwf_copy_remote_id _P1( (id), char * id )
 {
 int w = 0;
 
-    while ( isspace(*id) || *id == '"' ) id++;	/* skip leading whitespace */
+    while ( isspace( (uch) *id) || *id == '"' ) id++;	/* skip leading whitespace */
 
     while ( *id && w < sizeof(fax_remote_id)-1 )
     {
@@ -76,7 +94,7 @@ int w = 0;
     }
 
     /* remove trailing whitespace */
-    while ( w>0 && isspace(fax_remote_id[w-1]) ) w--;
+    while ( w>0 && isspace( (uch)fax_remote_id[w-1]) ) w--;
 
     fax_remote_id[w]=0;
 }
@@ -276,6 +294,7 @@ int  ix;
 	if ( strcmp( line, "ERROR" ) == 0 ||
 	     strcmp( line, "NO CARRIER" ) == 0 ||
 	     strcmp( line, "BUSY" ) == 0 ||
+	     strcmp( line, "NO ANSWER" ) == 0 ||
 	     strcmp( line, "NO DIALTONE" ) == 0 ||
 	     strcmp( line, "NO DIAL TONE" ) == 0 )
 	{
@@ -396,6 +415,8 @@ int fax_set_l_id _P2( (fd, fax_id), int fd, char * fax_id )
     return NOERROR;
 }
 
+#define nibble_to_hex(x) ( ((x)>9)? (x)-10+'A': (x)+'0')
+
 /* set resolution, minimum and maximum bit rate */
 int fax_set_fdcc _P4( (fd, fine, max, min),
 		      int fd, int fine, int max, int min )
@@ -416,9 +437,9 @@ int fax_set_fdcc _P4( (fd, fine, max, min),
     }
     else				/* standard case, working modem */
     {
-	sprintf( buf, "AT%s=%d,%d,0,2,0,0,0,0",
+	sprintf( buf, "AT%s=%d,%c,0,2,0,0,0,0",
 		 (modem_type == Mt_class2_0) ? "+FCC" : "+FDCC",
-		 fine, (max/2400) -1 );
+		 fine, nibble_to_hex( (max/2400)-1 ) );
     }
     
     if ( mdm_command( buf, fd ) == ERROR )
@@ -532,7 +553,7 @@ int fax_set_bor _P2( (fd, bor), int fd, int bor )
  * that looks like "pairs of hex digits with or without separators")
  */
 #define char_to_hex(ch) ( ( (ch)>='0' && (ch)<='9')? (ch)-'0' : \
-				tolower((ch))-'a'+10 )
+				tolower( (uch)(ch) )-'a'+10 )
 void fax2_incoming_nsf _P1((nsf_hex), char * nsf_hex )
 {
 #ifdef FAX_NSF_PARSER
@@ -543,14 +564,15 @@ char *p;
     len = 0;
     p = nsf_hex;
     /* some modems insert extra quotes at the start... (ZyXEL) */
-    while( *p != '\0' && ! isxdigit(*p) ) p++;
+    while( *p != '\0' && ! isxdigit( (uch)*p ) ) p++;
 
-    while( len<sizeof(nsf_bin) && isxdigit(*p) && isxdigit(*(p+1)) )
+    while( len<sizeof(nsf_bin) && 
+               isxdigit( (uch)*p ) && isxdigit( (uch)*(p+1)) )
     {
 	nsf_bin[len++] = (uch) ( char_to_hex(*p) << 4 ) +
 					char_to_hex(*(p+1));
 	p+=2;
-	while( *p != '\0' && ! isxdigit(*p) ) p++;
+	while( *p != '\0' && ! isxdigit( (uch)*p ) ) p++;
     }
 
     fax1_incoming_nsf( nsf_bin, len );
@@ -564,7 +586,7 @@ char nsf_print[200];
 int i;
 
     /* normal bit order */
-    for(i=0;i<len && i<sizeof(nsf_print);i++)
+    for(i=0;i<len && i<sizeof(nsf_print)-1;i++)
 	nsf_print[i] = isprint(nsf_bin[i])? nsf_bin[i]: '.';
     nsf_print[i] = '\0';
 
@@ -709,7 +731,7 @@ int mdm_identify _P1( (fd), int fd )
 
     /* all-numerical? */
     p = l;
-    while( isdigit(*p) || isspace(*p) ) p++;
+    while( isdigit( (uch)*p ) || isspace( (uch)*p ) ) p++;
 
     if ( *p == '\0' )		/* all-numeric */
     {

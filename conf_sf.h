@@ -1,7 +1,12 @@
-#ident "$Id: conf_sf.h,v 4.6 2008/01/31 16:15:37 gert Exp $ Copyright (c) 1994 Gert Doering"
+#ident "$Id: conf_sf.h,v 4.7 2010/09/17 15:27:04 gert Exp $ Copyright (c) 1994 Gert Doering"
 
 /* all (dynamic) sendfax configuration is contained in this structure.
  * It is initialized and loaded in conf_sf.c and accessed from sendfax.c
+ *
+ * $Log: conf_sf.h,v $
+ * Revision 4.7  2010/09/17 15:27:04  gert
+ * add CVS log tags
+ *
  */
 
 extern struct conf_data_sendfax {

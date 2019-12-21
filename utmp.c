@@ -1,4 +1,4 @@
-#ident "$Id: utmp.c,v 4.4 2001/12/17 22:43:24 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: utmp.c,v 4.8 2015/08/19 16:03:44 gert Exp $ Copyright (c) Gert Doering"
 
 /* some parts of the code (writing of the utmp entry)
  * is based on the "getty kit 2.0" by Paul Sutcliffe, Jr.,
@@ -58,7 +58,7 @@ void make_utmp_wtmp _P4( (line, ut_type, ut_user, ut_host),
      * [NB: If we wanted to set UT_INIT, it would have to be an entry with
      * empty ut_name and ut_host]
      */
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if (defined(__FreeBSD__) && (__FreeBSD_version < 900007)) || defined(__NetBSD__)
     struct utmp utmp;
     extern void login _PROTO(( struct utmp * utmp ));
 
@@ -103,22 +103,37 @@ int get_current_users _P0(void)
 
 #else			/* System V style utmp handling */
 
+/* this is just a wrapper around "make_utmp_wtmp_pid()"
+ * to manage entries "with our own pid"
+ */
 void make_utmp_wtmp _P4( (line, ut_type, ut_user, ut_host),
 			 char * line, short ut_type,
 			 char * ut_user, char * ut_host )
 {
+    make_utmp_wtmp_pid( line, ut_type, ut_user, ut_host, getpid() );
+}
+
+/* update utmp entry, add wtmp entry
+ * the pid will only be different from our own pid when called from
+ * mgetty-launchd, to cleanup after the mgetty child process
+ */
+
+void make_utmp_wtmp_pid _P5( (line, ut_type, ut_user, ut_host, pid),
+			     char * line, short ut_type,
+			     char * ut_user, char * ut_host, pid_t pid )
+{
 struct utmp *utmp;
-pid_t	pid;
 struct stat	st;
 FILE *	fp;
 
-    pid = getpid();
-    lprintf(L_JUNK, "looking for utmp entry... (my PID: %d)", pid);
+    lprintf(L_JUNK, "looking for utmp entry... (PID: %d)", pid);
 
     while ((utmp = getutent()) != (struct utmp *) NULL)
     {
 	if (utmp->ut_pid == pid &&
-	    (utmp->ut_type == INIT_PROCESS || utmp->ut_type == LOGIN_PROCESS))
+	    (utmp->ut_type == INIT_PROCESS || 
+	     utmp->ut_type == LOGIN_PROCESS ||
+	     utmp->ut_type == USER_PROCESS) )
 	{
 	    strcpy(utmp->ut_line, line );
 
@@ -128,7 +143,7 @@ FILE *	fp;
 	                                /* "LOGIN", "uugetty", "dialout" */
 	    strncpy( utmp->ut_user, ut_user, sizeof( utmp->ut_user ) );
 
-#if defined(SVR4) || defined(linux)
+#if defined(SVR4) || defined(linux) || defined(_AIX)
 	    if (ut_host != NULL)
 	    {
 	    	strncpy( utmp->ut_host, ut_host, sizeof( utmp->ut_host ) - 1);
@@ -171,6 +186,45 @@ FILE *	fp;
 	    lprintf(L_NOISE, "utmp + wtmp entry made");
 	    break;
 	}
+    }
+
+    /* if running under the AIX resource managment controller (which is
+     * not recommended but sometimes unavoidable in HACMP environments),
+     * there is no pre-existing utmp entry -> create
+     */
+    if ( utmp == NULL )
+    {
+#ifdef AIX_SRC
+	struct utmp ut_new;
+	memset( &ut_new, 0, sizeof(ut_new) );
+
+	lprintf( L_MESG, "no utmp/wtmp entry, creating new" );
+
+	strncpy( ut_new.ut_user, ut_user, sizeof( ut_new.ut_user ) );
+
+        ut_new.ut_id[0] = 'm';
+        ut_new.ut_id[1] = 'g';
+	strncpy( ut_new.ut_id+2, line, sizeof(ut_new.ut_id)-2 );
+	strcpy(ut_new.ut_line, line );
+
+        ut_new.ut_pid = getpid();
+	ut_new.ut_type = ut_type;	/* {INIT,LOGIN,USER}_PROCESS */
+					/* "LOGIN", "uugetty", "dialout" */
+	ut_new.ut_time = time( NULL );
+
+#if defined(SVR4) || defined(linux) || defined(_AIX)
+	if (ut_host != NULL)
+	{
+	    strncpy( ut_new.ut_host, ut_host, sizeof(ut_new.ut_host) - 1);
+# ifdef solaris2		/* Solaris 2.x */
+	    ut_new.ut_syslen = strlen(ut_new.ut_host) + 1;
+# endif
+	}
+#endif		/* SVR4 */
+	pututline( &ut_new );
+#else		/* AIX_SRC */
+	lprintf( L_WARN, "no utmp/wtmp entry, expect issues" );
+#endif		/* AIX_SRC */
     }
     endutent();
 }

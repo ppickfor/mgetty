@@ -9,10 +9,46 @@
 #
 # initial version: Feb 17, 1997
 #
-my $rcs_id='RCS: $Id: faxrunqd.in,v 1.81 2010/06/04 13:50:46 gert Exp $';
+my $rcs_id='RCS: $Id: faxrunqd.in,v 1.87 2013/07/05 09:32:41 gert Exp $';
 #
 # Change Log:
 # $Log: faxrunqd.in,v $
+# Revision 1.87  2013/07/05 09:32:41  gert
+# on "exit code 15" from sendfax, mark this tty as "seriously bad" (+2)
+# (because that normally only happens if a tty is so stuck that sendfax
+# never exits and has to be killed by signalling)
+#
+# Revision 1.86  2011/01/18 16:09:11  gert
+# introduce new per-modem error text block: %modem_errors_v
+# passed to "modem_error_script" via $MODEM_ERROR_VERBOSE env var
+# includes job ID, phone number, time stamp, verbose error code
+# -> ease figuring out where the problems are coming from
+#
+# Revision 1.85  2011/01/11 16:28:15  gert
+# make "Waiting for offspring..." line more informative
+#   - add timestamp
+#   - add current (in-memory) queue length
+# to help displaying proper queue length, remove failed jobs from %queue
+# if job directory disappears after calling "failure-program"
+#
+# Revision 1.84  2010/08/13 13:49:44  gert
+# move "open log file" before "read policy config"
+# --> log policy config parsing to log file :-)
+#
+# remove leading whitespace in policy config lines - there's no reasonable
+# usage case for that, and it makes policy config fail in surprising ways
+#
+# Revision 1.83  2010/06/29 13:49:36  gert
+# fix bogus comment before check_timing_constraints()
+# implement (minimal) control plugin infrastructure
+#   - plugin loading (if "faxrunqd-control-plugin" in faxrunq.config)
+#   - plugin init
+#   - query plugin for fcplugin::check_timing_constraints()
+#     (special customer requirements for 'no fax re-tries at nighttime')
+#
+# Revision 1.82  2010/06/28 10:54:39  gert
+# change "failed fax" e-mail to show "faxq -r $job" as how-to-renew command
+#
 # Revision 1.81  2010/06/04 13:50:46  gert
 # don't check timing constraints at "read job from queue" time, but check
 # constraints at "right before sending" time - otherwise it's possible that
@@ -268,6 +304,12 @@ my %delay_rules = ( 4 => [ 120, 300 ],	# busy -> 2 minutes, 5 minutes
 		    10 => [ 20 ],	# ERROR / NO CARRIER
 		  );
 
+# plugin functions? - bitmap
+my $plugin_f = 0;
+
+use constant { FCPLUG_TIME_CONSTRAINTS => 1,
+	     };
+
 #
 # verbose strings for error messages
 #
@@ -429,6 +471,8 @@ if ( open( CF, $faxrunq_cf ) )
 		{ $modem_error_thres = $1; $modem_error_script = $2; }
 	elsif ( /^\s*delay-rule\s+(\d+)\s+([\d\sm]+)$/ )
 		{ $delay_rules{$1} = [ split( /\s+/, $2 ) ]; }
+	elsif ( /^\s*faxrunqd-control-plugin\s+(\/\S+.pl)$/ )
+		{ plugin_load($1); }
 	else
 		{ die "syntax error in $faxrunq_cf, line $.!\n"; }
     }
@@ -442,19 +486,29 @@ if ( $faxq_lowat_thres == 0 )
 	{ $faxq_lowat_thres = $faxq_hiwat_thres * 0.6; }
 
 #
+# open log file
+#
+open( LOG, ">>$faxrd_log" ) ||
+	    die "can't write log file '$faxrd_log'";
+LOG->autoflush(1);
+print LOG "\n" . localtime() .": faxrunqd starting, pid=$$\n";
+print LOG "command line arguments: $0 $saved_cli\n$rcs_id\n";
+
+#
 # policy configuration
 #
 
 if ( $policy_config ne '' && -f $policy_config )
 {
-    print "reading $policy_config...\n" if $opt_d;
+    print LOG "reading $policy_config...\n" if $opt_v;
     if ( open( P, $policy_config ) )
     {
 	while( <P> )
 	{
 	    next if /^\s*#/;			# comment
 	    next if /^\s*$/;			# empty lines
-	    print "  pcfg: $_" if $opt_d;
+	    s/^\s+//;				# strip leading blanks
+	    print LOG "  pcfg: $_" if $opt_d;
 	    chomp;
 	    my ( $m, $s, $t, @a ) = split( /\s+/, $_ );
 	    my @ef = ();
@@ -472,6 +526,8 @@ if ( $policy_config ne '' && -f $policy_config )
 	    push @policy, { 'match' => $m, 'substitute' => $s, 
 			    'ttys' => ( $t ne '-' )? [ split( /:/, $t) ] : [],
 			    'args' => [@a], 'extra_flags' => {@ef} };
+	    print LOG "       -> m='$m', $s, ttys='$t', F='".
+		   join(' ', @a) ."', ef='" . join(' ', @ef) ."'\n" if $opt_d;
 	}
 	close(P);
     }
@@ -486,15 +542,6 @@ chdir( $fax_spool_out ) ||
 
 opendir FSO, "." ||
 	    die "can't read directory '$fax_spool_out'";
-
-#
-# open log file
-#
-open( LOG, ">>$faxrd_log" ) ||
-	    die "can't write log file '$faxrd_log'";
-LOG->autoflush(1);
-print LOG "\n" . localtime() .": faxrunqd starting, pid=$$\n";
-print LOG "command line arguments: $0 $saved_cli\n$rcs_id\n";
 
 #
 # internal queue
@@ -529,6 +576,7 @@ use vars qw / %tty_statistics %per_phone_statistics /;
 # modem error counters
 #
 my %modem_errors = ();
+my %modem_errors_v = ();
 
 # ###
 # ### MAIN LOOP -- rescan spool directory in certain intervals, send stuff
@@ -852,6 +900,7 @@ sub put_job_to_modem_queue
 	    $mq_badness{$t}=0;
 	    $tty_in_use{$t}=0;
 	    $modem_errors{$t}=[];
+	    $modem_errors_v{$t}='';
 	}
 
 	my $this_q_len = ( $t eq $queue{$j}->{last_modem} ) ? 9998 :
@@ -1141,13 +1190,33 @@ sub read_job_to_queue
 #
 # check_timing_constraints $JOB
 #
-# get $job from $modem_queue{$1}, lock $job/JOB, fork child process,
-# set $tty_in_use{$tty}, etc.
+# check whether job $JOB can be sent now
+# if not, remove from queue and put appropriate delay values
 #
 ##########################################################################
 sub check_timing_constraints
 {
     my $j=shift;
+
+    # if we have a control plugin, check whether it has something to say...
+    if ( $plugin_f & FCPLUG_TIME_CONSTRAINTS )
+    {
+	my $delay_sec = -1;
+	eval 
+	  { $delay_sec = fcplugin::check_timing_constraints($j, $queue{$j}); };
+	if ( $@ )
+	    { print LOG "ERROR: plugin_ctc failed: $@\n"; }
+
+	if ( $delay_sec > 0 )
+	{
+	    printf LOG "-> delay %02d:%02d h (plugin).\n",
+	                      $delay_sec/3600, ($delay_sec/60)%60;
+
+	    $queue{$j}->{status}='delayed';
+	    $queue{$j}->{'delayed_until'}=time() + $delay_sec;
+	    return 0;
+	}
+    }
 
     # no constraints at all
     if ( !defined( $queue{$j}{'time_1'} ) )  { return 1; }
@@ -1429,7 +1498,10 @@ sub wait_for_child
 {
 my ($r, $s, $ex, $j, $t);
 
-    print LOG "Waiting for offspring ($childs out there)...\n" if $opt_d;
+    my $queue = scalar( keys %queue );
+    $queue .= '*' if $queue_hiwat_reached;
+
+    print LOG localtime() .": waiting for offspring ($childs childs, queue length $queue)...\n" if $opt_d;
 
     $r = 0;
 
@@ -1661,6 +1733,7 @@ sub handle_return_code
 
 	# remember that this modem did well :-) (-> clear error history)
 	$modem_errors{$tty} = [];
+	$modem_errors_v{$tty} = '';
 
 	# success mail
 	&sms($j)
@@ -1714,13 +1787,17 @@ sub handle_return_code
 
 	# take note about performance of *this* modem...
 	push @{$modem_errors{$tty}}, $ex;
+	$modem_errors_v{$tty} .= localtime() ." $j $queue{$j}->{phone} fail($ex): $verb_ex\n";
+
 	# ... and complain if there are too many consecutive errors
 	if ( $modem_error_thres > 0 &&
 	     scalar(@{$modem_errors{$tty}}) == $modem_error_thres &&
 	     $modem_error_script ne '' && $modem_error_script ne '-' )
 	{
 	    print LOG "run script: '$modem_error_script $tty @{$modem_errors{$tty}}'\n";
+	    $ENV{MODEM_ERROR_VERBOSE} = $modem_errors_v{$tty};
 	    system( "$modem_error_script $tty @{$modem_errors{$tty}} </dev/null" );
+	    delete $ENV{MODEM_ERROR_VERBOSE};
 	}
 
 	#!!!! compare numbers -> remove job, or just requeue
@@ -1759,6 +1836,10 @@ sub handle_return_code
 
 	    # remove from internal queue
 	    $queue{$j}->{'status'}= 'failed';
+
+	    # if directory is gone (removed by $program_failure?) forget about job
+	    if( ! -d "$j" )
+		{ delete $queue{$j}; }
 	}			# end if ( max tries exceeded )
 	else			# requeue...
 	{
@@ -1780,6 +1861,10 @@ sub handle_return_code
 	    {
 		$mq_badness{$tty} += 0.2;	# mark modem as "bad"
 	    }
+            elsif ( $ex == 15 )                 # sendfax killed by signal
+            {
+                $mq_badness{$tty} += 2;         # mark modem as "really bad"
+            }
 
 	    # for some return values it is not useful to re-try right
 	    # away - e.g. for BUSY, delay a few minutes, and for other
@@ -1871,12 +1956,7 @@ It was not possible to send your fax to $rcvr!
 The fax job is suspended, you can requeue it for another delivery
 attempt with the command:
 
-    cd $fax_spool_out/$job
-    mv JOB.suspended JOB
-
-or (easier) with:
-
-    faxq -r
+    faxq -r $job
 
 
 The log file of your job follows:
@@ -2126,4 +2206,29 @@ sub check_queue_thresholds
 	    $queue_hiwat_reached=0;
 	}
     }
+}
+
+#
+# -------------------------------------------------------------------
+# plugin handling
+# -------------------------------------------------------------------
+sub plugin_load
+{
+    my $p = shift;
+
+    print "loading control plugin '$p'...\n" if $opt_v;
+
+    eval "require '$p';";
+    if ( $@ )
+    {
+	print STDERR "ERROR: cannot load plugin:\nERROR: $@\n";
+	return;
+    }
+    eval { $plugin_f = fcplugin::init(); };
+    if ( $@ )
+    {
+	print STDERR "ERROR: cannot init plugin:\nERROR: $@\n";
+	return;
+    }
+    print "... OK, bitmask = $plugin_f\n" if $opt_v;
 }

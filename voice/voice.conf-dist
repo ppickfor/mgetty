@@ -375,8 +375,6 @@ enable_compression_mapping_querry TRUE
 compression_8bit_linear_signed 0
 # compression 12 for rmd/pvf tools
 compression_16bit_linear_signed 0
-# compression 13 for rmd/pvf tools
-compression_16bit_linear_unsigned 133
 # compression 1 for rmd/pvf tools
 compression_8bit_linear_unsigned 1
 # compression 10 for rmd/pvf tools

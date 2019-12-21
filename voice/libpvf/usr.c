@@ -3,7 +3,7 @@
  *
  * Conversion pvf <--> USR GSM and ADPCM formats.
  *
- * $Id: usr.c,v 1.5 2001/12/22 19:44:09 marcs Exp $
+ * $Id: usr.c,v 1.6 2018/03/04 19:38:29 gert Exp $
  *
  */
 
@@ -167,8 +167,13 @@ static int usrgsmtopvf (FILE *fd_in, FILE *fd_out, pvf_header *header_out)
         *   for me until I get informations from the USR-Support.
         */
 
+       /* gert / David Binderman, 2018/03/04 - this used to unconditonally
+        * set GSM_MAGIC in a very complicated way - make it explicit
+        */
+#if 0
        if ((((*s >> 4) & 0x0F) != GSM_MAGIC) || (((*s >> 4) & 0x0F) != 0))
-         *s |= (GSM_MAGIC << 4);
+#endif
+       *s |= (GSM_MAGIC << 4);
 
        /* <--- MNI_p/JoSch --- */
 

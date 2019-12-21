@@ -1,4 +1,4 @@
-#ident "$Id: faxrecp.c,v 1.11 2005/12/31 15:55:36 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: faxrecp.c,v 1.13 2014/02/02 13:44:19 gert Exp $ Copyright (c) Gert Doering"
 
 /* faxrecp.c - part of mgetty+sendfax
  *
@@ -110,7 +110,7 @@ char	DevId[3];
     {
 	char c = fax_remote_id[j];
 
-	if ( isalnum(c) ) temp[i++] = c;
+	if ( isalnum( (uch) c) ) temp[i++] = c;
 	else
 	    { if ( temp[i-1] != '-' ) temp[i++] = '-' ; }
     }
@@ -133,6 +133,11 @@ char	DevId[3];
     }
 
     fax_fp = fdopen( fax_fd, "w" );
+    if ( fax_fp == NULL )
+    {
+	lprintf( L_ERROR, "fdopen() %s failed, giving up", temp );
+	return ERROR;
+    }
 
     /* do permission and owner changes as soon as possible -- security */
 
@@ -186,6 +191,7 @@ char	DevId[3];
 	if ( mdm_read_byte( fd, &c ) != 1 )
 	{
 	    lprintf( L_ERROR, "error waiting for page start" );
+	    fclose(fax_fp);
 	    return ERROR;
 	}
 	lputc( L_NOISE, c );
@@ -210,7 +216,8 @@ char	DevId[3];
 	    ErrorCount++;
 	    lprintf( L_ERROR, "fax_get_page_data: cannot read from port (%d)!",
 	                      ErrorCount );
-	    if (ErrorCount > 10) return ERROR;
+	    if (ErrorCount > 10) 
+		{ fclose(fax_fp); return ERROR; }
 	}
 	ByteCount++;
 

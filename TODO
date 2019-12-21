@@ -287,6 +287,7 @@ long, cut after 2050 (letter) or 2156 (A4) lines.
      faxrunq(d): make sure that "*" in $phone is never expanded as wildcard!
 
 225) use a non-root user-id (nobody?) for "cnd-program"
+225a) change "system" to "build a proper argv[], then fork/setuid/exec/wait"
 
 226) call cnd-program after "min-rings" RINGs, and before waiting for
      the remaining number of RINGs.
@@ -294,6 +295,11 @@ long, cut after 2050 (letter) or 2156 (A4) lines.
      the distinctive RING number / ISDN MSN)
 226a) have the cnd-program decide whether to "answer NOW", or "ask me
      again later".
+
+     2018-03-05: sort-of done (226+226a) with cid-program / return-value
+     (cid-program can set rings_wanted to "1" [now!] or "some high number",
+     after which cnd-program will be run - still not fully flexible, but
+     maybe that's not a real use-case anyway)
 
 227) mgetty: add config option to call external program in the case
      of "L_AUDIT / failed" exit's?  Might be helpful for an external

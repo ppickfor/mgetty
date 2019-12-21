@@ -16,7 +16,7 @@
  *
  * - Third, if the number of rings is less than 2 it is set to 2.
  *
- * $Id: rings.c,v 1.4 1998/09/09 21:08:09 gert Exp $
+ * $Id: rings.c,v 1.5 2018/03/06 11:11:40 gert Exp $
  *
  */
 
@@ -26,7 +26,7 @@ void vgetty_rings(int *rings_wanted)
      {
 
      if (strlen(cvd.rings.d.p) != 0)
-
+	{
           if (strncmp((char*) cvd.rings.d.p, "/", 1) == 0)
                {
                char ring_file_name[VOICE_BUF_LEN];
@@ -66,6 +66,7 @@ void vgetty_rings(int *rings_wanted)
                lprintf(L_JUNK, "%s: number of rings (%d) was set directly",
                 program_name, *rings_wanted);
                };
+	}
 
      if (strlen(cvd.message_flag_file.d.p) != 0)
           {

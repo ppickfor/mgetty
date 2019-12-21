@@ -1,4 +1,4 @@
-#ident "$Id: config.c,v 4.6 2006/06/14 09:52:34 gert Exp $ Copyright (c) 1993 Gert Doering"
+#ident "$Id: config.c,v 4.8 2014/02/02 13:06:24 gert Exp $ Copyright (c) 1993 Gert Doering"
 
 /*
  * config.c
@@ -91,7 +91,7 @@ char	*	p;
 	if ( bufidx > 0 )
 	{
 	    char * sp = bufp;
-	    while( isspace( *sp ) ) sp++;		/* skip whitespace */
+	    while( isspace( (uch)*sp ) ) sp++;		/* skip whitespace */
 	    
 	    if ( *sp == '#' )
 	    {
@@ -119,7 +119,7 @@ int  w, kflag;
 
     while ( *r )
     {
-	if ( isspace( *r ) )
+	if ( isspace( (uch)*r ) )
 	{
 	    if ( w > 0 && wp[ w-1 ] != ' ' )
 	    {
@@ -295,6 +295,39 @@ char ** p;
     }
 }
 
+/* like strcmp(), but permit wildcard matches:
+ *   - '?' will match any character in the peer string
+ *   - if one string is shorter, and the remainder of the other string
+ *     consists only of '?', accept match
+ */
+int wildcard_strcmp _P2(( a, b ), char * a, char * b)
+{
+    while( *a && *b )
+    {
+	if ( *a != *b &&
+		*a != '?' && *b != '?' )
+	{
+	    return (*a - *b);			/* not wildcard -> no match */
+	}
+	a++; b++;
+    }
+
+    if ( *a == '\0' )		/* b longer than a */
+    {
+	while( *b )
+	{
+	    if ( *b++ != '?' ) return -1;	/* no match */
+	}
+	return 0;				/* match */
+    }
+
+    /* a longer than b */
+    while( *a )
+    {
+	if ( *a++ != '?' ) return +1;		/* no match */
+    }
+    return 0;					/* match */
+}
 
 int get_config _P4( (conf_file,cd,section_key,key_value),
 		char * conf_file, conf_data * cd,
@@ -335,7 +368,7 @@ int ignore = 0;		/* ignore keywords in non-matching section */
 	if ( strcmp( key, section_key ) == 0 )	/* new section */
 	{
 	    ignore = ( key_value == NULL ) ||	/* match "wanted" section? */
-		     ( strcmp( line, key_value ) != 0 );
+		     ( wildcard_strcmp( line, key_value ) != 0 );
 	    lprintf( L_NOISE, "section: %s %s, %s",
 		     key, line, (ignore)?"ignore":"**found**" );
 	}
@@ -366,8 +399,8 @@ int ignore = 0;		/* ignore keywords in non-matching section */
 		  switch( cp->type )
 		    {
 		      case CT_INT:
-			if ( isdigit( line[0] ) ||
-			     ( line[0] == '-' && isdigit( line[1] ) ) )
+			if ( isdigit( (uch)line[0] ) ||
+			     ( line[0] == '-' && isdigit( (uch)line[1] ) ) )
 			    cp->d.i = strtol( line, NULL, 0 );
 			else
 			    errflag++;
@@ -384,8 +417,8 @@ int ignore = 0;		/* ignore keywords in non-matching section */
 			break;
 		      case CT_BOOL:
 			cp->d.i = ( line[0] == 0 || line[0] == 1 ||
-				    tolower(line[0]) == 'y' ||
-				    tolower(line[0]) == 't' ||
+				    tolower((uch)line[0]) == 'y' ||
+				    tolower((uch)line[0]) == 't' ||
 				    strncmp( line, "on", 2 ) == 0 );
 			break;
 		      case CT_FLOWL:

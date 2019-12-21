@@ -128,17 +128,6 @@ Make: just go to the mgetty directory, call "make contrib-all"
 
 gert@greenie.muc.de
 -----------------------------------------------------------
-scrts.c
-
-A small tool for linux (only), to set the CRTSCTS hardware handshake
-flag. Compile it with "cc -o scrts scrts.c", use it with "scrts <device>"
-
-It will (if possible) open the port in non-blocking mode (you need this
-if "stty crtscts </dev/ttyS..." hangs), and set the CRTSCTS flag. If
-something goes wrong, it will print an error message.
-
-gert@greenie.muc.de
------------------------------------------------------------
 g3toxwd.c
 
 From:	Chel van Gennip <chel@bazis.nl>

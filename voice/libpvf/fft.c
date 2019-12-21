@@ -3,7 +3,7 @@
  *
  * Original code by ulrich@Gaston.westfalen.de (Heinz Ulrich Stille).
  *
- * $Id: fft.c,v 1.5 1999/03/16 09:59:19 marcs Exp $
+ * $Id: fft.c,v 1.6 2014/02/02 12:32:05 gert Exp $
  *
  */
 
@@ -145,7 +145,7 @@ int pvffft (FILE *fd_in, pvf_header *header_in, int skip, int sample_size,
 
                fprintf(stderr, "%s: not enough samples available\n",
                 program_name);
-               return(ERROR);
+               goto err;
                }
 
           }
@@ -185,7 +185,7 @@ int pvffft (FILE *fd_in, pvf_header *header_in, int skip, int sample_size,
           if (sum < threshold)
                kill(vgetty_pid, SIGUSR2);
 
-          return(OK);
+          goto eok;
           }
 
      if (display)
@@ -196,9 +196,16 @@ int pvffft (FILE *fd_in, pvf_header *header_in, int skip, int sample_size,
                 header_in->speed, sqrt(real[i] * real[i] +
                 imag[i] * imag[i]) / max);
 
-          return(OK);
+          goto eok;
           };
 
      printf("%s: FFT level is %g\n", program_name, sum);
+eok:
+     free( (void *) real);
+     free( (void *) imag);
      return(OK);
+err:
+     free( (void *) real);
+     free( (void *) imag);
+     return(ERROR);
      }

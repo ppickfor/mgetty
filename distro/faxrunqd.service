@@ -1,0 +1,19 @@
+# see https://bugzilla.redhat.com/show_bug.cgi?id=1468715
+#
+[Unit]
+Description=faxrunqd - daemon to send fax jobs queued by faxspool
+Documentation=man:faxrunqd(8)
+Wants=basic.target
+After=basic.target network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/faxrunqd -v -d
+Restart=always
+RestartSec=2
+User=fax
+Group=dialout
+SupplementaryGroups=fax dialout lock
+
+[Install]
+WantedBy=multi-user.target

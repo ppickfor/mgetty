@@ -1,4 +1,4 @@
-#ident "$Id: goodies.c,v 4.5 2003/11/17 19:08:49 gert Exp $ Copyright (c) 1993 Gert Doering"
+#ident "$Id: goodies.c,v 4.10 2014/04/03 08:59:56 gert Exp $ Copyright (c) 1993 Gert Doering"
 
 /*
  * goodies.c
@@ -6,6 +6,24 @@
  * This module is part of the mgetty kit - see LICENSE for details
  *
  * various nice functions that do not fit elsewhere 
+ *
+ * $Log: goodies.c,v $
+ * Revision 4.10  2014/04/03 08:59:56  gert
+ * de-warn for _AIX case
+ *
+ * Revision 4.9  2014/02/02 13:45:10  gert
+ * convert all "char" expressions to (uch) when calling ctype.h macros (*sigh*)
+ *
+ * Revision 4.8  2014/01/28 12:21:15  gert
+ * add safe_strdup()
+ *
+ * Revision 4.7  2012/02/24 15:39:29  gert
+ * alternative implementation of get_ps_args() for AIX - do not call
+ * "/bin/ps" but read /proc/<pid>/psinfo.
+ *
+ * Tested on AIX 6, so this might cause issues on AIX 5 and earlier - if
+ * needed, add appropriate #ifdefs...
+ *
  */
 
 #include <stdio.h>
@@ -30,7 +48,7 @@
 #include "mgetty.h"
 #include "config.h"
 
-#ifdef SVR4
+#if defined(SVR4) || defined(_AIX)
 # include <sys/procfs.h>
 #endif
 
@@ -62,7 +80,7 @@ void get_ugid _P4( (user, group, uid, gid),
     {
 	struct passwd *pwd;
 
-	if ( isdigit( *(char*)(user->d.p) ))	/* numeric */
+	if ( isdigit( (uch) *(char*)(user->d.p) ))	/* numeric */
 	    pwd = getpwuid( atoi( (char*) (user->d.p) ));
 	else					/* string */
 	    pwd = getpwnam( (char*)(user->d.p) );
@@ -83,7 +101,7 @@ void get_ugid _P4( (user, group, uid, gid),
     {
 	struct group * grp;
 
-	if ( isdigit( *(char*)(group->d.p) ))	/* numeric */
+	if ( isdigit( (uch) *(char*)(group->d.p) ))	/* numeric */
 	    grp = getgrgid( atoi( (char*)(group->d.p)) );
 	else					/* string */
 	    grp = getgrnam( (char*) (group->d.p) );
@@ -199,7 +217,32 @@ char * get_ps_args _P1 ((pid), int pid )
 # endif /* show user name, not process cmd line */
 #endif /* linux */
 
-#if !defined(SVR4) && !defined(linux)
+#ifdef _AIX
+    static struct psinfo psi;
+    char procfn[30];
+    int procfd;
+    int l;
+
+    /* binary "struct psinfo" in /proc/<pid>/psinfo
+     */
+
+    sprintf( procfn, "/proc/%d/psinfo", pid );
+
+    procfd = open( procfn, O_RDONLY );
+
+    if ( procfd < 0 )
+	{ lprintf( L_ERROR, "cannot open %s", procfn ); return NULL; }
+
+    l = read( procfd, &psi, sizeof(psi) );
+    close( procfd );
+
+    if ( l < 0 )
+	{ lprintf( L_ERROR, "reading %s failed", procfn ); return NULL; }
+
+    return psi.pr_psargs;
+#endif
+
+#if !defined(SVR4) && !defined(linux) && !defined(_AIX)
     return NULL;
 #endif
 }
@@ -220,6 +263,17 @@ char * dest;
 
 #endif
 
+/* strdup wrapper that will complain + exit on no memory */
+char * safe_strdup _P1( (src), char * src)
+{
+    char * dest = strdup(src);
+    if ( dest == NULL )
+    {
+	fprintf( stderr, "FATAL: save_strdup(): error allocating memory" );
+	exit(2);
+    }
+    return dest;
+}
 
 #if defined(NEED_PUTENV)
 

@@ -1,4 +1,4 @@
-#ident "$Id: class1lib.c,v 4.23 2009/03/19 15:31:21 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: class1lib.c,v 4.27 2015/08/19 17:36:10 gert Exp $ Copyright (c) Gert Doering"
 
 /* class1lib.c
  *
@@ -6,6 +6,24 @@
  * send a frame, receive a frame, dump frame to log file, ...
  *
  * $Log: class1lib.c,v $
+ * Revision 4.27  2015/08/19 17:36:10  gert
+ * bit-tests with '&' and not '&&'... (found by clang)
+ *
+ * Revision 4.26  2014/04/03 09:04:13  gert
+ * rename FRAMESIZE to C1_FRAMESIZE, collision with AIX header file (grrr)
+ *
+ * Revision 4.25  2014/02/03 19:03:11  gert
+ * fax1_receive_frame():
+ *   handle case where 0x13 character that needs to come after 0xff for
+ *   final frames is lost - print warning that this can be caused by wrong
+ *   xon/xoff flow control settings, and synthesize 0x13 character so we
+ *   can go on.  Hack, but works :-)
+ *
+ * Revision 4.24  2014/02/02 13:44:19  gert
+ * warning cleanup:
+ *   convert all "char" expressions to (uch) when calling ctype.h macros (*sigh*)
+ *   fix signed/unsigned char warning in function calls
+ *
  * Revision 4.23  2009/03/19 15:31:21  gert
  * add CVS tags
  *
@@ -296,8 +314,19 @@ int fax1_receive_frame _P4 ( (fd, carrier, timeout, framebuf),
 
 	/* got preamble, all further bytes are put into buffer */
 
+	/* first byte of frame MUST be [03] (non-final) or [13] (final)
+	 * but if port is set to Xon/Xoff flow control, 0x13 gets lost
+	 * -> so if anything else shows up as "first byte" synthesize [13]
+	 */
+	if ( count == 0 && c != 0x03 && c != 0x13 )
+	{
+	    lprintf( L_WARN, "fax1_receive_frame: octet following 0xff must be 0x03 or 0x13, not 0x%02x - make sure outbound xon/xoff flow control is off!", c );
+	    lputs( L_NOISE, "<*[0x13]*>" );
+	    framebuf[count++] = 0x13;
+	}
+
 	/* enough room? */
-	if ( count >= FRAMESIZE-5 )
+	if ( count >= C1_FRAMESIZE-5 )
 	{
 	    lprintf( L_ERROR, "fax1_receive_frame: too many octets in frame" );
 	    rc = ERROR; break;
@@ -502,7 +531,7 @@ int fax1_send_frame _P4( (fd, carrier, frame, len),
 {
 char * line;
 static int carrier_active = -2;		/* inter-frame marker */
-uch dle_buf[FRAMESIZE*2+2];		/* for DLE-coded frame */
+uch dle_buf[C1_FRAMESIZE*2+2];		/* for DLE-coded frame */
 int r,w;
 
     fax1_dump_frame( '>', frame, len );
@@ -658,7 +687,7 @@ int fax1_send_dcn _P2((fd, code), int fd, int code )
  */
 int fax1_send_nsf _P2( (fd, carrier), int fd, int carrier )
 {
-uch frame[FRAMESIZE];
+uch frame[C1_FRAMESIZE];
 
     /* NSF is never final frame */
     frame[0] = 0x03;
@@ -667,8 +696,8 @@ uch frame[FRAMESIZE];
     frame[3] = 0x81;		/* mgetty + */
     frame[4] = 0x70;		/*  sendfax */
     frame[5] = 0x00;		/* frame version */
-    strncpy( &frame[6], "mgetty ", 7 );
-    strncpy( &frame[13], VERSION_SHORT, 7 );
+    strncpy( (char*) &frame[6], "mgetty ", 7 );
+    strncpy( (char*) &frame[13], VERSION_SHORT, 7 );
 
     return fax1_send_frame( fd, carrier, frame, 20 );
 }
@@ -703,7 +732,7 @@ char c;
         if ( c == '"' || c == '\'' ) fax_remote_id[w++] = '_';
 				else fax_remote_id[w++] = c;
     }
-    while( w>0 && isspace(fax_remote_id[w-1]) ) w--;
+    while( w>0 && isspace( (uch)fax_remote_id[w-1]) ) w--;
     fax_remote_id[w]=0;
 
     lprintf( L_MESG, "fax_id: '%s'", fax_remote_id );
@@ -713,7 +742,7 @@ char c;
  */
 int fax1_send_dis _P1( (fd), int fd )
 {
-uch frame[FRAMESIZE];
+uch frame[C1_FRAMESIZE];
 int speedbits = 0;
 int r_flags;
 struct fax1_btable * dis_btp = fax1_btable;
@@ -839,7 +868,7 @@ void fax1_parse_dis _P1((frame), uch * frame )
 
 int fax1_send_dcs _P2((fd, s_time), int fd, int s_time )
 {
-uch framebuf[FRAMESIZE];
+uch framebuf[C1_FRAMESIZE];
 int i;
 
     /* find baud/carrier table entry that has a speed not over
@@ -905,7 +934,7 @@ void fax1_parse_dcs _P1((frame), uch *frame)
     fax_par_d.st = fax1_st_table[ (frame[4] >> 4) & 0x07 ].st;
 
     /* extend bit? */
-    if ( ( frame[4] && 0x80 ) == 0 ) goto done;
+    if ( ( frame[4] & 0x80 ) == 0 ) goto done;
 
     /* ECM - TODO */
     

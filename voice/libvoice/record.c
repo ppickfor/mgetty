@@ -4,7 +4,7 @@
  * This command records voice data from the voice modem and
  * saves them in the given file.
  *
- * $Id: record.c,v 1.6 2005/06/15 09:43:04 gert Exp $
+ * $Id: record.c,v 1.7 2014/02/02 12:53:03 gert Exp $
  *
  */
 
@@ -59,6 +59,7 @@ int voice_record_file (char *name)
           if (fwrite(&header, sizeof(rmd_header), 1, fd) != 1)
                {
                lprintf(L_WARN, "%s: Could not write header", program_name);
+               fclose(fd);
                return(FAIL);
                }
 

@@ -6,16 +6,17 @@ if [ -z "$VS" -o -z "$HOST" -o -z "$DIR" ] ; then
     echo "Syntax error: $0 <VS> <HOST> <DIR>" >&2 ; exit 1
 fi
 
-SRC=mgetty$VS.tar.gz
+SRC=mgetty-$VS.tar.gz
 if [ ! -f "$SRC" ] ; then
     echo "$0: can't find $SRC!" >&2 ; exit 2
 fi
 
-if expr "$VS" : '[0-9].[13579]' >/dev/null ; then
-    DST=mgetty$VS-`date +%b%d`.tar.gz
-else
-    DST=mgetty+sendfax-$VS.tar.gz
-fi
+#if expr "$VS" : '[0-9].[13579]' >/dev/null ; then
+#    DST=mgetty$VS-`date +%b%d`.tar.gz
+#else
+#    DST=mgetty+sendfax-$VS.tar.gz
+#fi
+DST=mgetty-$VS.tar.gz
 
 scp $SRC $HOST:$DIR/$DST
 scp $SRC.asc $HOST:$DIR/$DST.asc

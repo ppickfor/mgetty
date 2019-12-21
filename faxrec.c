@@ -192,7 +192,11 @@ time_t	ti;
 
     lprintf( L_NOISE, "fax_notify_mail: sending mail to: %s", mail_to );
 
-    sprintf( buf, "%s %s >/dev/null 2>&1", MAILER, mail_to );
+#ifdef NEED_MAIL_TO_ON_CLI
+    sprintf( buf, "%.80s \"%.150s\" >/dev/null 2>&1", MAILER, mail_to );
+#else				/* sendmail -t (etc.) */
+    sprintf( buf, "%.200s >/dev/null 2>&1", MAILER );
+#endif
 
     pipe_fp = popen( buf, "w" );
     if ( pipe_fp == NULL )
@@ -201,13 +205,11 @@ time_t	ti;
 	return;
     }
 
-#ifdef NEED_MAIL_HEADERS
     fprintf( pipe_fp, "Subject: fax from %s\n", fax_remote_id[0] ?
 	               fax_remote_id: "(anonymous sender)" );
     fprintf( pipe_fp, "To: %s\n", mail_to );
     fprintf( pipe_fp, "From: root (Fax Getty)\n" );
     fprintf( pipe_fp, "\n" );
-#endif
 
     if ( fax_hangup_code == 0 )
     {

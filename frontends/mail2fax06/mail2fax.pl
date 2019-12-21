@@ -4,9 +4,18 @@
 #                       from e-mail address (12345@fax), call faxspool
 # to be run from sendmail, qmail, ...
 #
-# $Id: mail2fax.pl,v 1.4 2007/04/05 08:45:58 gert Exp $
+# $Id: mail2fax.pl,v 1.5 2010/09/25 16:30:47 gert Exp $
 #
 # $Log: mail2fax.pl,v $
+# Revision 1.5  2010/09/25 16:30:47  gert
+# Remove evil characters from filename before passing to faxspool
+# (notably this is only ' ' as MIME::Parser already handles the
+# rest, but specifically ' ' upsets faxspool, as it's not quoting
+# everything right yet)
+#
+# Maybe this could be better done by overriding MIME::Parser::Filer's
+# evil_filename and excorcise_filename, but that's much more work :-)
+#
 # Revision 1.4  2007/04/05 08:45:58  gert
 # skip empty text/plain MIME parts
 #
@@ -128,6 +137,18 @@ my $type = $part->effective_type;
 	{
 	    print LOG "-> skip part, empty file $path\n";
 	    next;
+	}
+
+	# filename with problematic characters in it? -> rename
+	# (most of the evilness is handled inside MIME::Parser::Filer, but 
+	# most notably *witespace* isn't, and faxspool doesn't like this)
+	#
+	if ( $path =~ /[\s()*`'"\\]/ )
+	{
+	    my $oldpath = $path;
+	    $path =~ s/[\s()*`'"\\]/_/g;
+	    print LOG "-> evil filename, exorcised to '$path'\n";
+	    rename $oldpath, $path;
 	}
     
 	push @pages, $path;

@@ -3,7 +3,7 @@
 #
 # This is the Makefile for the whole vgetty stuff.
 #
-# $Id: Makefile,v 1.9 2006/09/26 11:57:46 gert Exp $
+# $Id: Makefile,v 1.10 2018/03/04 19:39:56 gert Exp $
 #
 
 AR=ar
@@ -15,7 +15,7 @@ MV=mv
 RM=rm
 
 MGETTYLIB=../../getdisk.o ../../goodies.o ../../io.o ../../g3file.o \
-	../../locks.o ../../tio.o ../../modem.o \
+	../../locks.o ../../tio.o ../../modem.o  ../../clean_line.o \
 	../../class1.o ../../class1lib.o ../../hyla_nsf.o 
 
 LIBDIRS=libpvf libutil libvoice libmgsm

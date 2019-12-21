@@ -1,6 +1,6 @@
 # doc/Makefile
 #
-# SCCS: $Id: Makefile,v 4.8 2009/02/18 08:15:59 gert Exp $ Copyright (C) 1994 Gert Doering
+# SCCS: $Id: Makefile,v 4.9 2018/03/06 13:26:16 gert Exp $ Copyright (C) 1994 Gert Doering
 #
 
 NROFF=nroff
@@ -40,7 +40,7 @@ mgetty.ms: mgetty.texi
 	-texi2roff -ms <mgetty.texi >mgetty.ms
 
 mgetty.html: mgetty.texi
-	-texi2html -verbose mgetty.texi
+	-texi2any --verbose --html --force --no-split mgetty.texi
 
 mgetty.info: mgetty.texi
 	-makeinfo mgetty.texi

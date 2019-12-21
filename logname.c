@@ -1,4 +1,4 @@
-#ident "$Id: logname.c,v 4.11 2005/11/24 16:58:32 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: logname.c,v 4.13 2018/03/06 11:37:51 gert Exp $ Copyright (c) Gert Doering"
 
 /* logname.c
  *
@@ -7,6 +7,14 @@
  * read login name, detect incoming PPP frames and FIDO startup sequences
  *
  * $Log: logname.c,v $
+ * Revision 4.13  2018/03/06 11:37:51  gert
+ * Alex Manoussakis: cid-program patch set
+ *
+ * Revision 4.12  2014/02/02 13:44:18  gert
+ * warning cleanup:
+ *   convert all "char" expressions to (uch) when calling ctype.h macros (*sigh*)
+ *   fix signed/unsigned char warning in function calls
+ *
  * Revision 4.11  2005/11/24 16:58:32  gert
  * add extra flag, env_ttyprompt, that replaces #ifdef ENV_TTYPROMPT
  *
@@ -185,7 +193,7 @@ char * ln_escape_prompt _P1( (ep), char * ep )
 		}
 		break;
 	      default:		/* not a recognized string */
-		if ( isdigit( *ep ) )		/* "\01234" */
+		if ( isdigit( (uch)*ep ) )		/* "\01234" */
 		{
 		    char * help;
 		    p[i++] = strtol( ep, &help, 0 );
@@ -219,8 +227,8 @@ boolean ln_all_upper _P1( (string), char * string )
     for ( i=0; string[i] != 0; i++ )
     {
 	if ( string[i] == '\377' ) return FALSE;	/* **EMSI_INQ */
-	if ( islower( string[i] ) ) return FALSE;
-	if ( isupper( string[i] ) ) uc = TRUE;
+	if ( islower( (uch)string[i] ) ) return FALSE;
+	if ( isupper( (uch)string[i] ) ) uc = TRUE;
     }
     if ( ! uc )		/* no letters at all */
  	return FALSE;	/* -> counted as lowercase */
@@ -228,26 +236,7 @@ boolean ln_all_upper _P1( (string), char * string )
     return TRUE;
 }
 #endif
-	
 
-/* set_env_var( var, string )
- *
- * create an environment entry "VAR=string"
- */
-void set_env_var _P2( (var,string), char * var, char * string )
-{
-    char * v;
-    v = malloc( strlen(var) + strlen(string) + 2 );
-    if ( v == NULL )
-        lprintf( L_ERROR, "set_env_var: cannot malloc" );
-    else
-    {
-	sprintf( v, "%s=%s", var, string );
-	lprintf( L_NOISE, "setenv: '%s'", v );
-	if ( putenv( v ) != 0 )
-	    lprintf( L_ERROR, "putenv failed" );
-    }
-}
 
 static int timeouts = 0;
 static RETSIGTYPE getlog_timeout(SIG_HDLR_ARGS)
@@ -341,6 +330,17 @@ int getlogname _P7( (prompt, tio, buf, maxsize, max_login_time,
 	    
     do
     {
+	/* test a hypothesis by waiting with select() for "input" 
+         * and then calling non-blocking read()
+         */
+	if ( !wait_for_input( STDIN, 5000 ) )
+	{
+	    lputs( L_JUNK, "<*>" ); continue;
+	}
+	if ( timeouts > 0 )
+	{
+	    lprintf( L_MESG, "login timeout, exit." );  exit(0);
+	}
 	if ( ( r = read( STDIN, &ch, 1 ) ) != 1 )
 	{
 	    if ( r == 0 )				/* EOF/HUP/^D */
@@ -567,7 +567,7 @@ int getlogname _P7( (prompt, tio, buf, maxsize, max_login_time,
 	else			/* second time */
 	{
 	    for ( i=0; buf[i] != 0; i++ )
-	        if ( isupper( buf[i] ) ) buf[i] = tolower(buf[i]);
+	        if ( isupper( (uch)buf[i] ) ) buf[i] = tolower( (uch)buf[i] );
 	    tio_map_uclc( tio, TRUE );
 	    lprintf( L_MESG, "login name all uppercase, set IUCLC OLCUC" );
 	}

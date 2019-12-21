@@ -1,4 +1,4 @@
-#ident "$Id: faxsend.c,v 4.9 2007/06/15 06:44:58 gert Exp $ Copyright (c) 1994 Gert Doering"
+#ident "$Id: faxsend.c,v 4.11 2016/02/09 15:09:15 gert Exp $ Copyright (c) 1994 Gert Doering"
 
 /* faxsend.c
  *
@@ -12,6 +12,16 @@
  * The code is still quite rough, but it works.
  *
  * $Log: faxsend.c,v $
+ * Revision 4.11  2016/02/09 15:09:15  gert
+ * add <string.h>
+ *
+ * Revision 4.10  2014/01/31 13:40:13  gert
+ * fax_send_ppm()
+ *   extend timeout between sending <DLE><ETX> and reception of "OK"
+ *   if page size is large and/or speed is slow (estimate worst-case
+ *   transfer time, assuming that all data went into a huge network buffer
+ *   in no time at all).  Definitely needed for socket and DIVA cases.
+ *
  * Revision 4.9  2007/06/15 06:44:58  gert
  * add CVS Log tag
  *
@@ -21,6 +31,7 @@
 #include <strings.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 #include "syslibs.h"
 
 #ifndef sunos4
@@ -307,7 +318,7 @@ int fax_send_page _P5( (g3_file, bytes_sent, tio, ppm, fd),
             *bytes_sent += w_total;
 
     /* send end-of-page characters and post-page-message */
-    rc = fax_send_ppm( fd, tio, ppm );
+    rc = fax_send_ppm( fd, tio, ppm, w_total );
 
     alarm(0);
 
@@ -319,8 +330,9 @@ int fax_send_page _P5( (g3_file, bytes_sent, tio, ppm, fd),
  * class 2  : send <DLE> <ETX>, then send AT+FET=... according to "type"
  * class 2.0: send <DLE>{<mps>|<eop>|<eom>}, then send AT+FPS?
  */
-int fax_send_ppm _P3( (fd, tio, ppm),
-		      int fd, TIO * tio, Post_page_messages ppm )
+int fax_send_ppm _P4( (fd, tio, ppm, bytes_sent ),
+		      int fd, TIO * tio, 
+		      Post_page_messages ppm, int bytes_sent )
 {
     int rc;
 
@@ -402,10 +414,37 @@ int fax_send_ppm _P3( (fd, tio, ppm),
     }
     else
     {
+	int wait_time;
+
 	/* transmit end of page (<DLE><ETX> -> OK) */
 
 	lprintf( L_MESG, "sending DLE ETX..." );
 	write( fd, fax_end_of_page, sizeof( fax_end_of_page ));
+	alarm(0);
+
+	/* on normal modems, the OK response comes quickly, as the 
+	 * tty buffers have limited size, and the serial speed is
+	 * similar to the transission speed
+	 *
+	 * on "remote socket" modems, or active ISDN cards that only
+	 * pretend to have a tty interface with "port speed" but really 
+	 * just slurp up all the G3 data into a big internal buffer,
+	 * slowly sending from there, this can take significantly longer
+	 * ("320 kbyte @ 4800 = 500 seconds") than the default timeout
+	 * of 120 seconds -> adjust
+	 * extra "*1.5" and "+60" is to give leeway for potential EC resends
+	 */
+	wait_time = bytes_sent*8/((fax_par_d.br+1)*2400)*1.5 + 60;
+
+	if ( wait_time > FAX_RESPONSE_TIMEOUT )
+	{
+	    lprintf( L_MESG, "extended wait time: %d seconds", wait_time );
+	    if ( !wait_for_input( fd, wait_time*1000 ) )
+	    {
+		lprintf( L_ERROR, "modem gone away after DLE ETX (%d ext. waittime)", wait_time );
+		return ERROR;
+	    }
+	}
 	
 	if ( fax_wait_for( "OK", fd ) == ERROR ) return ERROR;
 

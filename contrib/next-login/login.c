@@ -218,7 +218,9 @@ main(argc, argv)
 				badlogin(tbuf);
 			failures = 0;
 		}
-		(void)strcpy(tbuf, username);
+		(void)strncpy(tbuf, username, sizeof(tbuf)-1);
+		tbuf[sizeof(tbuf)-1] = '\0';
+
 		if (pwd = getpwnam(username))
 			salt = pwd->pw_passwd;
 		else

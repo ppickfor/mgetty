@@ -1,4 +1,4 @@
-#ident "$Id: sff2g3.c,v 1.4 2004/07/16 20:30:16 gert Exp $ Copyright (C) 1994 Gert Doering"
+#ident "$Id: sff2g3.c,v 1.5 2018/03/06 07:48:17 gert Exp $ Copyright (C) 1994 Gert Doering"
 
 /* sff2g3
  *
@@ -13,6 +13,13 @@
  * see also: http://sfftools.sourceforge.net/
  *
  * $Log: sff2g3.c,v $
+ * Revision 1.5  2018/03/06 07:48:17  gert
+ * fix compiler warnings in sff2g3
+ *
+ * sff_output_blank_lines(): properly declare argument
+ * sff_skip_bytes(): check fread() return value - if underread, print
+ *   message to stderr (but ignore otherwise, we do not care here)
+ *
  * Revision 1.4  2004/07/16 20:30:16  gert
  * work on debugging output (verbose>1)
  * handle "0xff 0x00" tagged lines correctly (input error -> blank line)
@@ -85,7 +92,10 @@ void sff_skip_bytes( int skip )
 	while( skip > 0 )
 	{
 	    int l = skip>sizeof(workbuf)?  sizeof(workbuf): skip;
-	    fread( workbuf, 1, l, rfp ); skip -= l;
+	    int r = fread( workbuf, 1, l, rfp ); 
+	    if ( r != l )
+		{ fprintf( stderr, "sff_skip_bytes: want to read %d bytes, fread() returns %d\n", l, r); }
+	    skip -= l;
 	}
     }
 }
@@ -144,7 +154,7 @@ int i, ch;
     puteol();		/* add EOL (byte-aligned) */
 }
 
-void sff_output_blank_lines( l )
+void sff_output_blank_lines( int l )
 {
     if ( verbose>1 ) printf( "sff_obl: %d blank lines\n", l );
     while( l-- > 0 )

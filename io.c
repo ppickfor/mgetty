@@ -1,4 +1,4 @@
-#ident "$Id: io.c,v 4.2 1997/06/28 20:41:29 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: io.c,v 4.3 2014/01/28 13:42:57 gert Exp $ Copyright (c) Gert Doering"
 
 /* io.c
  *
@@ -18,9 +18,9 @@
 
 #ifdef USE_POLL
 # include <poll.h>
-# ifndef _AIX
+# if !defined(_AIX) && !defined(BSD)
 int poll _PROTO(( struct pollfd fds[], unsigned long nfds, int timeout ));
-# endif		/* AIX */
+# endif		/* AIX / Linux */
 #endif		/* USE_POLL */
 
 /* SCO Unix defines XENIX as well, which will confuse the code below */

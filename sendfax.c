@@ -1,4 +1,4 @@
-#ident "$Id: sendfax.c,v 4.27 2008/01/31 16:23:08 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: sendfax.c,v 4.32 2018/03/06 07:51:09 gert Exp $ Copyright (c) Gert Doering"
 
 /* sendfax.c
  *
@@ -8,6 +8,39 @@
  * The code is still quite rough, but it works.
  *
  * $Log: sendfax.c,v $
+ * Revision 4.32  2018/03/06 07:51:09  gert
+ * ignore compiler warning about write() return code
+ *
+ * (no need to do anything here, the next function call will catch and
+ * properly report tty fd errors)
+ *
+ * Revision 4.31  2014/02/01 10:50:55  gert
+ * accept "modem-type c1.0" (or "-C c1.0") option to force class 1.0
+ *
+ * Revision 4.30  2014/01/31 11:32:42  gert
+ * finish half-done change to fax_close() calls (adding pt)
+ *
+ * Revision 4.29  2014/01/31 10:23:42  gert
+ * Introduce "port_type pt", which is PT_TTY for regular local tty devices
+ * that do "termio/termios" stuff, or PT_RAW_SOCKET for remote devices where
+ * we have no way to control modem settings (flow control, speed, ...).
+ *
+ * On PT_RAW_SOCKET type ports, do not call all those functions that would
+ * fail anyway.  Use clean_line() to clear away initial data on the socket
+ * fd (like, a welcome message from ser2net, etc).
+ *
+ * Revision 4.28  2014/01/28 13:42:00  gert
+ * cleanup:
+ *   move some parameter initialization from "fax_open_device()" to caller
+ *   make fax_open_device() static
+ *   use "safe_strdup()" to initialize "char * Device"
+ *   fix typo
+ * FAX_SEND_SOCKETS - basic support
+ *   if ttyname starts with "ttyRI", hand over to connect_to_remote_tty()
+ *   if tio_set() at modem speed initialization fails with EOPNOTSUPP, ignore
+ *   that error ("Operation not supported" is what you see on non-tty file
+ *   scriptors like "sockets")
+ *
  * Revision 4.27  2008/01/31 16:23:08  gert
  * use mdm_command() not fax_command() for sending reset sequence
  *
@@ -105,11 +138,14 @@ RETSIGTYPE fax_sig_goodbye _P1( (signo), int signo )
     exit(15);				/* will close the fax device */
 }
 
-int fax_open_device _P2( (fax_tty, use_stdin),
-			 char * fax_tty, boolean use_stdin )
+static int fax_open_device _P3( (fax_tty, use_stdin, port_type),
+			         char * fax_tty, boolean use_stdin,
+				 port_type_t * port_type )
 {
     char	device[MAXPATH];
     int	fd;
+
+    *port_type = PT_TTY;		/* standard case */
 
     if ( use_stdin )			/* fax modem on stdin */
     {
@@ -142,6 +178,17 @@ int fax_open_device _P2( (fax_tty, use_stdin),
 		return -1;
 	    }
 	}
+
+#ifdef FAX_SEND_SOCKETS
+	if ( strlen( fax_tty ) >= 8 &&
+             strncmp( fax_tty, "ttyRI", 5 ) == 0 )
+	{
+	    *port_type = PT_RAW_SOCKET;
+	    fd = connect_to_remote_tty( fax_tty );
+	    if ( fd < 0 ) rmlocks();
+	    return fd;
+	}
+#endif
 	
 	sprintf( device, "/dev/%s", fax_tty );
 
@@ -156,10 +203,7 @@ int fax_open_device _P2( (fax_tty, use_stdin),
 	/* make device name externally visible (faxrec())
 	 * we have to dup() it, because caller will change fax_tty
 	 */
-	Device = malloc( strlen(fax_tty)+1 );
-	if ( Device == NULL )
-	    { perror( "sendfax: can't malloc" ); exit(2); }
-	strcpy(Device, fax_tty);
+	Device = safe_strdup( fax_tty );
     }
 
     /* unset O_NDELAY (otherwise waiting for characters */
@@ -210,12 +254,6 @@ int fax_open_device _P2( (fax_tty, use_stdin),
 	return -1;
     }
 
-    /* reset parameters */
-    fax_to_poll = FALSE;
-
-    fax_remote_id[0] = 0;
-    fax_param[0] = 0;
-
     if ( use_stdin )
     {
 	lprintf( L_NOISE, "fax_open_device, fax on stdin" );
@@ -233,11 +271,12 @@ int fax_open_device _P2( (fax_tty, use_stdin),
 
 /* fax_open: loop through all devices in fax_ttys until fax_open_device()
  * succeeds on one of them; then return file descriptor
- * return "-1" of no open succeeded (all locked, permission denied, ...)
+ * return "-1" if no open succeeded (all locked, permission denied, ...)
  */
 
-int fax_open _P2( (fax_ttys, use_stdin),
-	      char * fax_ttys, boolean use_stdin )
+static int fax_open _P3( (fax_ttys, use_stdin, port_type),
+			  char * fax_ttys, boolean use_stdin, 
+			  port_type_t *port_type )
 {
 char * p, * fax_tty;
 int fd;
@@ -247,7 +286,7 @@ int fd;
     {
 	p = strchr( fax_tty, ':' );
 	if ( p != NULL ) *p = 0;
-	fd = fax_open_device( fax_tty, use_stdin );
+	fd = fax_open_device( fax_tty, use_stdin, port_type );
 	if ( p != NULL ) *p = ':';
 	fax_tty = p+1;
     }
@@ -257,13 +296,15 @@ int fd;
 
 /* finish off - close modem device, rm lockfile */
 
-void fax_close _P1( (fd),
-		    int fd )
+void fax_close _P2( (fd, pt),
+		    int fd, port_type_t pt )
 {
-    tio_flush_queue( fd, TIO_Q_BOTH );		/* unlock flow ctl. */
+    if ( pt != PT_RAW_SOCKET )
+       tio_flush_queue( fd, TIO_Q_BOTH );	/* unlock flow ctl. */
     fax_send( "AT+FCLASS=0", fd );
     delay(500);
-    tio_flush_queue( fd, TIO_Q_BOTH );		/* unlock flow ctl. */
+    if ( pt != PT_RAW_SOCKET )
+       tio_flush_queue( fd, TIO_Q_BOTH );	/* unlock flow ctl. */
     close( fd );
     rmlocks();
 }
@@ -300,6 +341,7 @@ int main _P2( (argc, argv),
 {
     int	argidx;
     int	fd;
+    port_type_t pt;
     char buf[1000];
     int	i;
     int	tries;			/* number of unsuccessful tries */
@@ -368,7 +410,7 @@ int main _P2( (argc, argv),
     /* if modem on stdin, shut off blurb */
     if ( c_bool(use_stdin) ) verbose = FALSE;
     
-    fd = fax_open( c_string(ttys), c_bool(use_stdin) );
+    fd = fax_open( c_string(ttys), c_bool(use_stdin), &pt );
 
     if ( fd == -1 )
     {
@@ -377,6 +419,11 @@ int main _P2( (argc, argv),
 	exit(2);
     }
 
+    /* reset parameters */
+    fax_to_poll = FALSE;
+    fax_remote_id[0] = 0;
+    fax_param[0] = 0;
+
     /* read config file (port specific) */
     sendfax_get_config( Device );
 
@@ -384,6 +431,7 @@ int main _P2( (argc, argv),
     if ( strcmp( c_string(modem_type), "cls2" ) != 0 &&
 	 strcmp( c_string(modem_type), "c2.0" ) != 0 &&
 	 strcmp( c_string(modem_type), "cls1" ) != 0 &&
+	 strcmp( c_string(modem_type), "c1.0" ) != 0 &&
 	 strncmp(c_string(modem_type), "auto", 4) != 0 )
     {
 	fprintf( stderr, "%s: warning: invalid modem class '%s'\n",
@@ -404,8 +452,9 @@ int main _P2( (argc, argv),
 
     /* now set speed for this port (do this *after* sendfax_get_config())!
      */
-    if ( tio_set_speed( &fax_tio, c_int(speed) ) == ERROR ||
-         tio_set( fd, &fax_tio ) == ERROR )
+    if ( pt != PT_RAW_SOCKET )
+      if ( tio_set_speed( &fax_tio, c_int(speed) ) == ERROR ||
+           tio_set( fd, &fax_tio ) == ERROR )
     {
 	fprintf( stderr, "%s: cannot set serial port speed %d on \"%s\"\n",
 			argv[0], c_int(speed), Device );
@@ -423,7 +472,14 @@ int main _P2( (argc, argv),
 	lprintf( L_NOISE, "pausing %d ms", c_int(open_delay));
 	delay(c_int(open_delay));		/* give modem time to settle */
     }
-    tio_flush_queue(fd, TIO_Q_BOTH);		/* clear junk */
+    if ( pt == PT_TTY )
+    {
+        tio_flush_queue(fd, TIO_Q_BOTH);	/* clear junk */
+    }
+    else
+    {
+	clean_line(fd, 2);			/* read away junk */
+    }
 
     /* Is there a modem...? */
     if ( mdm_command( "ATV1Q0", fd ) == ERROR )
@@ -447,7 +503,7 @@ int main _P2( (argc, argv),
     {
 	if ( strncmp( c_string(modem_init), "AT", 2 ) != 0 )
 	{
-	    write( fd, "AT", 2 );
+	    (void) write( fd, "AT", 2 );
 	}
 
 	if ( fax_command( c_string(modem_init), "OK", fd ) == ERROR )
@@ -456,7 +512,7 @@ int main _P2( (argc, argv),
 		    c_string(modem_init) );
 	    fprintf( stderr, "%s: modem doesnt't accept '%s'\n",
 		    argv[0], c_string(modem_init) );
-	    fax_close( fd );
+	    fax_close( fd, pt );
 	    exit(3);
 	}
     }		/* end if (c_isset(modem_init)) */
@@ -468,7 +524,7 @@ int main _P2( (argc, argv),
     {
 	lprintf( L_AUDIT, "failed: modem type unknown, dev=%s", Device);
 	fprintf( stderr, "%s: cannot set modem to fax mode\n", argv[0] );
-	fax_close( fd );
+	fax_close( fd, pt );
 	exit( 3 );
     }
 
@@ -476,7 +532,7 @@ int main _P2( (argc, argv),
     {
 	lprintf( L_AUDIT, "failed: no class 2/2.0 fax modem, dev=%s", Device);
 	fprintf( stderr, "%s: not a class 2/2.0 fax modem\n", argv[0] );
-	fax_close( fd );
+	fax_close( fd, pt );
 	exit( 3 );
     }
 
@@ -495,7 +551,7 @@ int main _P2( (argc, argv),
     {
 	lprintf( L_AUDIT, "failed: cannot set fax station ID, dev=%s", Device);
 	fprintf( stderr, "%s: cannot set fax station ID\n", argv[0] );
-	fax_close( fd );
+	fax_close( fd, pt );
 	exit(3);
     }
 
@@ -531,7 +587,8 @@ int main _P2( (argc, argv),
 
     /* set modem to use desired flow control type, dial out
      */
-    if ( fax_set_flowcontrol( fd, (FAXSEND_FLOW) & FLOW_HARD ) == ERROR )
+    if ( pt != PT_RAW_SOCKET &&
+         fax_set_flowcontrol( fd, (FAXSEND_FLOW) & FLOW_HARD ) == ERROR )
     {
 	lprintf( L_WARN, "cannot set modem flow control" );
     }
@@ -577,7 +634,7 @@ int main _P2( (argc, argv),
 	}
 
 	/* close fax line */
-	fax_close( fd );
+	fax_close( fd, pt );
 	
 	/* print message, and end program -
 	   return codes signals kind of dial failure */
@@ -609,7 +666,7 @@ int main _P2( (argc, argv),
     {
 	lprintf( L_MESG, "sendfax: IGNORE DCD (carrier) status" );
     }
-    else				/* honour carrier */
+    else if ( pt != PT_RAW_SOCKET )	/* honour carrier */
     {
 	/* by now, the modem should have raised DCD, so remove CLOCAL flag */
 	tio_carrier( &fax_tio, TRUE );
@@ -762,7 +819,7 @@ int main _P2( (argc, argv),
 	    fprintf( stderr, "Transmission error: +FHNG:%2d (%s)\n",
 			     fax_hangup_code,
 			     fax_strerror( fax_hangup_code ) );
-	fax_close( fd );
+	fax_close( fd, pt );
 	exit(12);
     }
 
@@ -789,9 +846,12 @@ int main _P2( (argc, argv),
 	    if ( modem_type == Mt_class2_0 ) fax_set_bor( fd, 1 );
 	    
 	    /* switch to fax receiver flow control */
-	    tio_set_flow_control( fd, &fax_tio,
-				 (FAXREC_FLOW) & (FLOW_HARD|FLOW_XON_IN) );
-	    tio_set( fd, &fax_tio );
+	    if ( pt != PT_RAW_SOCKET )
+	    {
+		tio_set_flow_control( fd, &fax_tio,
+				     (FAXREC_FLOW) & (FLOW_HARD|FLOW_XON_IN) );
+		tio_set( fd, &fax_tio );
+	    }
 	    if ( fax_get_pages( fd, &pagenum, c_string(poll_dir),
 			        -1, -1, -1 ) == ERROR )
 	    {
@@ -799,14 +859,14 @@ int main _P2( (argc, argv),
 		lprintf( L_AUDIT, "failed: polling failed, phone=\"%s\", +FHS:%02d, dev=%s, time=%ds, acct=\"%s\"",
 			 fac_tel_no, fax_hangup_code, Device,
 			 ( time(NULL)-call_start ), c_string(acct_handle) );
-		fax_close( fd );
+		fax_close( fd, pt );
 		exit(12);
 	    }
 	}
 	if ( verbose ) printf( "%d pages successfully polled!\n", pagenum );
     }
 
-    fax_close( fd );
+    fax_close( fd, pt );
 
     lprintf( L_AUDIT, "success, phone=\"%s\", dev=%s, time=%ds, pages=%d(+%d), bytes=%d, acct=\"%s\"",
 	              fac_tel_no, Device, ( time(NULL)-call_start ),

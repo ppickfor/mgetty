@@ -3,7 +3,7 @@
  *
  * Contains some basic functions for reading and writing files
  *
- * $Id: lib.c,v 1.4 1998/09/09 21:07:00 gert Exp $
+ * $Id: lib.c,v 1.5 2014/02/02 12:10:47 gert Exp $
  *
  */
 
@@ -258,7 +258,7 @@ static void write_pvf_data_32(FILE *fd_out, int data)
 
 int read_pvf_header(FILE *fd_in, pvf_header *header_in)
      {
-     char buffer[VOICE_BUF_LEN];
+     char buffer[VOICE_BUF_LEN + 1];
      int i;
 
      *header_in = init_pvf_header;

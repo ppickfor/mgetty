@@ -1,3 +1,317 @@
+Mon Sep 10 20:51:51 CEST 2018  Gert Doering <gert@greenie.muc.de>
+
+	* Makefile: release 1.2.1
+
+Sun Sep  9 18:36:09 CEST 2018  Gert Doering <gert@greenie.muc.de>
+
+	* Details are now all in Git, so use "git log" for more detailed
+          change logging (+timestamps)
+
+	* fax/faxrunq.in, fax/faxq.in: properly quote input from JOB files,
+	  avoid attack with shell metacharacters (CVE-2018-16741)
+
+	* contrib/scrtsc.c: remove from distribution (CVE-2018-16742)
+
+	* contrib/next-login/next-login.c: fix buffer overflow on username
+	  (CVE-2018-16743)
+
+	* faxrec.c, policy.h: rework mail handling, avoid potential buffer
+	  overrun by means of "mail-to" config variable (CVE-2018-16744)
+
+	* g32pbm.c: fix invalid lseek() handling (infinite loop)
+
+	* pbm2g3.c: fix handling of invalid PBM input
+
+	* Makefile: repair "make diff" building
+
+	* git import: add stuff that was missed for 1.2.0 release
+	  (it was in the 1.2.0 tarball, but missing in git repo)
+
+
+Tue Mar  6 13:45:33 CET 2018  Gert Doering <gert@greenie.muc.de>
+
+	* release 1.2.0, exactly 25 years after 0.1
+		"Mar  6  1993 mgetty01.tpz"
+ 	  (unfortunately the original post to alt.sources can no longer
+	  been found, the oldest version groups.google.com has in its
+	  archives are 0.14 and 0.20 from October and November 1993)
+
+Tue Mar  6 12:03:33 CET 2018  Gert Doering <gert@greenie.muc.de>
+
+	* cnd.c, conf_mg.c, conf_mg.h, mgetty.c, mgetty.h, logname.c,
+		login.c, t/t_ring.c, doc/mgetty.texi-in - merge "cid-program"
+		patch set from Alex Manoussakis <alex@juniper.net>
+		(after 10 years...)
+
+	* policy.h: default MAILER to "/usr/sbin/sendmail"
+
+	* policy.h: default CONSOLE to "/dev/null" - as /dev/console seems
+		to cause hangs on FreeBSD 10
+
+	* mg_utmp.h: ut_time compatibility #define for utmpx on FreeBSD
+		needs to be ut_tv.tv_sec, not ut_tv  (struct timeval)
+
+Mon Mar  5 19:32:23 CET 2018  Gert Doering <gert@greenie.muc.de>
+
+	* conf_mg.c, conf_mg.h, mgetty.c: new option "open-delay <msec>"
+	  (same thing as for sendfax, after DTR toggling, wait <msec>
+	  millseconds before flushing input and starting AT commands)
+
+	* doc/mgetty.texi-in: document open-delay
+
+Sun Mar  4 20:22:47 CET 2018  Gert Doering <gert@greenie.muc.de>
+
+	* Makefile, version.h: make this is version 1.2.0
+
+	* distro/faxrunqd.service: add systemd service file for faxrunqd
+
+Tue Feb  9 16:09:21 CET 2016  Gert Doering <gert@greenie.muc.de>
+
+	* g3/pbm2g3.c, g3/g3cat.c: change "inline" to "static inline",
+	  avoid link-time explosion with C99 compilers
+
+Wed Aug 19 19:36:48 CEST 2015  Gert Doering <gert@greenie.muc.de>
+
+	* utmp.c, mg_utmp.h: apply FreeBSD port patches to adjust to 9.x
+	  (no <utmp.h> or login() anymore, utmpx and setutxent())
+
+Thu Apr  3 11:05:13 CEST 2014 Gert Doering <gd@medat.de>
+
+	* class1.h, class1.c, class1lib.c: rename FRAMESIZE to C1_FRAMESIZE
+	  to avoid conflict with AIX headers already using FRAMESIZE (*sigh*)
+
+Sun Feb  2 14:06:41 CET 2014  Gert Doering <gert@greenie.muc.de>
+
+	* config.c, logfile.c, logname.c, login.c, modem.c, ring.c,
+	  faxlib.c, faxrecp.c, class1lib.c, cnd.c, g3/pbm2g3.c, goodies.c,
+	  fax/faxq-helper.c, callback/callback.c: convert all "char" 
+	  expressions to (uch) when calling ctype.h macros (*sigh*)
+
+	* fax_lib.h: add prototype for fax1_send_page() and fax1_send_nsf()
+
+	* class1lib.c: fix signed/unsigned char warning in strncpy() call
+
+	* g3file.c: fix signed/unsigned char warning in function calls
+
+	* tio.c: #include <sys/ioctl.h> on BSD
+
+Sun Feb  2 13:24:40 CET 2014  Michal Sekletar <msekleta@redhat.com>
+
+	* bug fixes based on static code analysis (mem leaks, buffer overruns)
+
+	* do_chat.c: test if(action != NULL) in all places
+
+	* logfile.c: Moved call to close to else branch of if-statement to 
+          avoid passing invalid file descriptor in case log_fd == -1
+
+	* g3/g32pbm.c, g3/g3cat.c: pass actual file descriptor to close(), 
+          not negative result from read()
+
+	* logfile.c: in logmail(), skip fwrite() if read() returns <= 0
+
+	* faxlib.c: avoid potential buffer overrun (off-by-one) when copying
+          a maximum-length NSF (theoretical possiblity as NSF frame length 
+          is bounded)
+
+	* voice/libpvf/lib.c: avoid buffer overrun with terminating zero byte
+	  in read_pvf_header() when reading a malformed PVF file (= 2nd line 
+          longer than VOICE_BUF_LEN)
+
+	* g3/g32pbm.c: fix memleak in scalebm(): add missing free(mulvec)
+
+	* g3/pbm2g3.c: fix memleak in convert_pbm_raw(): add free(linebuf)
+
+	* voice/libpvf/fft.c: fix memleaks in pvffft(), always free(real)
+	  and free(imag) (introducing exit labels and jumping there)
+
+	* faxrecp.c: in fax_get_page_data(), ensure that fax_fp is actually
+          valid (fdopen() *can* fail) - and always fclose() it on exit
+
+	* do_chat.c: fclose(fp) on error exit
+
+	* voice/libvoice/record.c: fclose(fd) on error-exit
+
+	* voice/libvoice/play.c: ensure fclose(fd) on all returns
+
+Fri Jan 31 17:44:00 CET 2014  Gert Doering <gert@greenie.muc.de>
+
+	* frontends/dir2fax: added simple "scan directory, fax out" script
+
+Fri Jan 31 14:40:28 CET 2014  Gert Doering <gd@medat.de>
+
+	* faxsend.c: increase timeout value between <DLE><ETX> and "OK" to
+	  whatever is needed to cope for "large documents, slow receiver,
+          huge buffers in network and/or DIVA cards".
+
+Fri Jan 31 11:23:59 CET 2014  Gert Doering <gd@medat.de>
+
+	* mgetty.h: introduce "port_type_t" enum to store port type in sendfax
+
+	* sendfax.c: add proper port type handling to get rid of all the
+	  TIO_* errors for unsupported function calls on PT_RAW_SOCKET ports
+
+	* clean_line.c, clean_line(): if FAX_SEND_SOCKETS, never use VTIME
+
+	* do_chat.c, clean_line.c: move clean_line() from do_chat.c to 
+          clean_line.c (we need it from sendfax, and it fits nowhere else)
+
+	* faxlib.c: recognize "NO ANSWER" as final "dial-failed" response
+
+	* Makefile: add rule for mgetty-launchd, not built by default.
+
+	* Makefile: remove support for "sentinelized" binaries
+
+Tue Jan 28 13:21:15 CET 2014  Gert Doering <gd@medat.de>
+
+	* goodies.c: add safe_strdup() function
+
+	* socket.c: add call-out module to connect to remote "modems"
+	  reachable via raw TCP/IP sockets - like a DIVA ISDN board made
+          accessible by ser2net.  Conditional on #ifdef FAX_SEND_SOCKETS
+
+	* sendfax.c: if a tty name is "ttyRInmm", magically map that to
+	  a remote tty via socket.c (connect to modemserver<n>, on TCP
+	  port 50000+<mm>).  Handle differences between "local tty" and
+	  "raw socket" ports in termio(s) initialization etc.
+
+	* io.c: do not declare poll() prototype on BSD
+
+	* faxlib.c: permit higher "fax max speed" than 14400 by proper
+	  hex-encoding the result of "(max_speed/2400)-1".  DIVA cards
+	  can do up to 33600, encoded as 'D'.
+
+	* config.c: add wildcard matching to section_key matches - like
+	  "port ttyRI???" -> match on all Ports starting with "ttyRI" and
+	  up to 3 characters.  Useful to set common modem-init stuff for
+	  30 lines on a DIVA PRI board...
+
+Sun Jan 26 20:18:07 CET 2014  Gert Doering <gert@greenie.muc.de>
+
+	* policy.h: add and explain FAX_SEND_SOCKETS option
+
+	* Makefile: add socket.c/socket.o, cleanup LIBS and gdiff usage
+
+Fri Jul  5 11:32:42 CEST 2013
+
+	* fax/faxrunqd.in: treat "exit(15)" from sendfax as extra-bad, 
+	  adding +2 to mq_badness counter (this error hints at "the tty
+	  got completely stuck, each fax sent there will be delayed for
+	  many minutes until sendfax is killed" -> avoid using that tty)
+
+Fri Feb 24 14:40:15 CET 2012  Gert Doering <gd@medat.de>
+
+	* goodies.c: implement get_ps_args() for _AIX (6+, with /proc)
+
+	* mgetty-launchd.c: new tool to run mgetty from "non-init" processes
+          (mainly written for IBM HACMP cluster environments, where inittab
+          cannot easily be used because the modem devices and mgetty processes
+          have to move with the cluster, and ttys on a remote terminal server
+          can only be accessed from a single node at a time)
+
+	* utmp.c: set ut_host on AIX, zero new utmp entry before using
+          (otherwise ut_host might contain garbage if not set), introduce
+          new entry point: make_utmp_wtmp_pid()
+
+Wed Feb 15 20:52:48 CET 2012  Gert Doering <gert@greenie.muc.de>
+
+	* we have a public GIT now: git://github.greenie.net/mgetty.git
+          (readonly, so send your patches by mail)
+
+Wed Feb  1 15:23:09 CET 2012  Gert Doering <gert@greenie.muc.de>
+
+	* utmp.c: on AIX (#ifdef AIX_SRC), if there is no existing utmp
+                  entry, create a new one (needed if using AIX' res.mgmt.)
+
+	* mgetty.c: #ifdef AIX_SRC, create INIT_PROCESS utmp entry on start
+
+Mon Jul 11 11:21:20 CEST 2011
+
+	* atsms.c: add new option '-Z' -> "zap modem" (do full SIM reset 
+	  with AT+CFUN=1,1 if AT+CPIN? query returns ERROR)
+
+Mon Mar 28 20:03:31 CEST 2011  Gert Doering <gert@greenie.muc.de>
+
+	* fax/faxspool.in: print number of pages in "success!" message
+
+	* fax/faxspool.rules: add sample statements for HTML-to-Fax
+
+Tue Jan 18 17:09:11 CET 2011
+
+	* fax/faxrunqd.in: pass verbose error list to "modem error script"
+	  (in $MODEM_ERROR_VERBOSE env variable) - help humans understand
+
+Fri Oct  8 12:50:07 CEST 2010  Gert Doering <gd@medat.de>
+
+	* g3/g3cat.c: when reporting invalid g3 code, use "fd" for ftell(),
+          not "0" (artifact from "could only handle single file on stdin")
+
+	* g3/g3cat.c, g3/g32pbm.c: use ftell(..., SEEK_CUR) not (..., 1)
+
+Sat Sep 25 18:31:21 CEST 2010  Gert Doering <gert@greenie.muc.de>
+
+	* frontends/mail2fax06/mail2fax.pl: substitute problem characters
+		in attachment file names by "_" before passing to faxspool
+
+Wed Sep 22 11:02:09 CEST 2010  Gert Doering <gd@medat.de>
+
+	* sms.c: cleanup sub-process handling and console redirection
+		(double-fork()/exec() now)
+
+	* mgetty.c, mgetty.h: move handle_incoming_sms() prototype from
+		mgetty.h to mgetty.c (uid_t/gid_t non-availability)
+
+Wed Sep 15 11:21:28 CEST 2010  Gert Doering <gert@greenie.muc.de>
+
+	* policy.h: add new block for #define SMS + explanations
+
+	* sms.c: NEW - handling of incoming SMS messages and delivery reports
+		(read from GSM modem, call external script handler)
+
+	* conf_mg.[ch] - add sms-handler and sms-handler-{user,group} options
+
+	* mgetty.c: add recognition of +CMTI: and +CDSI: SMS status messages
+		to ring_chat_actions[] -> A_SMS_* action
+
+	* mgetty.c: add new state: St_incoming_sms, and call out to
+		handle_incoming_sms() to handle SMS related stuff
+
+	* mgetty.c: make "dialout!" logging more useful (log dialout command)
+
+	* mgetty.h: add A_SMS_* action types and prototypes
+
+
+Fri Aug 13 15:49:45 MEST 2010  Gert Doering <gd@medat.de>
+
+	* fax/faxrunqd.in: log faxrunqd.policy file parsing to log file
+	  (no longer to stdout).  
+	  
+	* fax/faxrunqd.in: ignore leading whitespace in faxrunqd.policy 
+	  lines (INCOMPATIBLE CHANGE, those lines now suddenly start working!)
+
+Fri Jul 16 18:26:23 MEST 2010  Gert Doering <gd@medat.de>
+
+	* tap/atsms.c: handle "waiting for delivery report times out"
+	  more gracefully - don't flag as "SMS transmission error"
+
+Tue Jun 29 16:02:00 MEST 2010  Gert Doering <gd@medat.de>
+
+	* fax/faxrunqd.in: extend 'time constraint' handling with plugin
+			infrastructure for really weird cases
+
+Mon Jun 28 13:23:21 MEST 2010  Gert Doering <gert@greenie.muc.de
+
+	* doc/faxq1.in: document new "-r ..." syntax
+
+	* fax/faxq.in: incompatible change to "-r" semantics: wants
+	               explicit job specification now, or "all" to
+		       re-queue all failed jobs currently in queue
+
+	* fax/faxrunq.in, faxrunqd.in: show new "faxq -r $job" command in
+			"your fax has failed, requeue with ..." mail now
+
+	* tap/atsms.c: after SIM PIN initialization, wait 120 secs before
+			trying to send SMS (modem needs time to log in)
+
 Sat Jun  5 11:47:17 MEST 2010  Gert Doering <gert@greenie.muc.de>
 
 	* release 1.1.37

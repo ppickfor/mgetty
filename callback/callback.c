@@ -474,7 +474,7 @@ int main _P2((argc, argv), int argc, char ** argv)
 	t_numbers[0] = phonebuf;
 
         i = strlen(phonebuf);
-	while (i>0 && !isprint(phonebuf[i-1]))
+	while (i>0 && !isprint( (unsigned char)phonebuf[i-1] ))
 	    phonebuf[--i] = 0;
     }
 

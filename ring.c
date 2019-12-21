@@ -1,4 +1,4 @@
-#ident "$Id: ring.c,v 4.21 2008/03/07 14:46:43 gert Exp $ Copyright (c) Gert Doering"
+#ident "$Id: ring.c,v 4.22 2014/02/02 13:44:19 gert Exp $ Copyright (c) Gert Doering"
 
 /* ring.c
  *
@@ -84,11 +84,11 @@ char ch;
     ch = *string;
 
     /* skip over leading "garbage" */
-    while( *string != '\0' && !isdigit(*string) ) string++;
+    while( *string != '\0' && !isdigit( (uch)*string ) ) string++;
 
     /* grab caller number (all up to the first non-digit) */
     p=string;
-    while( isdigit(*p) ) p++;
+    while( isdigit( (uch)*p ) ) p++;
 
     if ( *p == '\0' )		/* only one number listed */
     {
@@ -105,7 +105,7 @@ char ch;
 	CallerId = safedup( string );
 
 	p++;
-	while( *p != '\0' && !isdigit(*p) ) p++;
+	while( *p != '\0' && !isdigit( (uch)*p ) ) p++;
 
 	return find_msn( p, msn_list );
     }
@@ -119,7 +119,7 @@ char * p;
     lprintf( L_MESG, "Zoom MX/S: '%s'", string );
 
     p=&string[8];
-    while( isdigit(*p) ) p++;
+    while( isdigit( (uch)*p ) ) p++;
 
     *p = '\0';
     CallerId = safedup( &string[8] );
@@ -142,14 +142,14 @@ char * p, ch;
     {
 	string+=3;
 	/* Blatzheim: FM:<space><number> */
-	while( isspace(*string) ) { string++; }
+	while( isspace( (uch)*string ) ) { string++; }
 
 	p=string;
-	while( isdigit(*p) ) p++;
+	while( isdigit( (uch)*p ) ) p++;
 	ch = *p; *p = '\0';
 	CallerId = safedup(string);
 	*p = ch;
-	while( isspace(*p) ) p++;
+	while( isspace( (uch)*p ) ) p++;
 
 	/* skip potential sub-addresses ("/<something>/") */
 	if ( *p == '/' )
@@ -164,7 +164,7 @@ char * p, ch;
     {
 	string += 3;
 	/* Blatzheim: TO:<space><number> */
-	while( isspace(*string) ) { string++; }
+	while( isspace( (uch)*string ) ) { string++; }
 
 	return find_msn( string, msn_list );
     }
@@ -195,7 +195,7 @@ static void ring_handle_DROx( char * p )
 
     /* skip whitespace and '=' (covers "DRON=nnn" and "DRON = nnn")
      */
-    while( isspace(*p) || *p == '=' ) { p++; }
+    while( isspace( (uch)*p ) || *p == '=' ) { p++; }
 
     len = atoi( p );
 
@@ -289,7 +289,7 @@ boolean	got_dle;		/* for <DLE><char> events (voice mode) */
 	if ( ch != '\r' && ch != '\n' )
 	{
 	    /* skip whitespace at start of buffer */
-	    if ( w == 0 && isspace(ch) ) continue;
+	    if ( w == 0 && isspace( (uch)ch ) ) continue;
 
 	    /* add character to buffer */
 	    if( w < BUFSIZ-2 )
@@ -329,8 +329,8 @@ boolean	got_dle;		/* for <DLE><char> events (voice mode) */
 	 * we count it as "RING" to be able to pick up immediately 
 	 * instead of waiting for the next "real" RING
 	 * (but don't do this for V253 DRON/DROF modems!)
-	if ( strncmp( buf, "NMBR", 4 ) == 0 && drox_count == 0 ) { break; }
 	 */
+	if ( strncmp( buf, "NMBR", 4 ) == 0 && drox_count == 0 ) { break; }
 
 	/* V.253 ring cadences */
 	if ( strncmp( buf, "DRON", 4 ) == 0 ||
@@ -344,7 +344,7 @@ boolean	got_dle;		/* for <DLE><char> events (voice mode) */
 	    { w = 0; lprintf( L_NOISE, "got: " ); continue; }
 
 	p=&buf[4];
-	while( isspace(*p) ) p++;
+	while( isspace( (uch)*p ) ) p++;
 
 	if ( *p == '\0' )			/* "classic RING" */
 	    { break; }
@@ -358,11 +358,11 @@ boolean	got_dle;		/* for <DLE><char> events (voice mode) */
 	if ( strlen(p) > 1 )			/* USR type B: "RING 1234" */
 	    { *dist_ring_number = ring_handle_ELSA( p, msn_list ); break; }
 
-	if ( isdigit( *p ) )			/* RING 1 */
+	if ( isdigit( (uch)*p ) )		/* RING 1 */
 	    { *dist_ring_number = *p-'0'; break; }
 
-	if ( isalpha( *p ) )			/* RING A */
-	    { *dist_ring_number = tolower(*p)-'a' +1; break; }
+	if ( isalpha( (uch)*p ) )		/* RING A */
+	    { *dist_ring_number = tolower( (uch)*p )-'a' +1; break; }
     }
 
 have_ring:
